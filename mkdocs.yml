@@ -1,0 +1,50 @@
+site_name: norma
+site_author: Sean D Stewart
+copyright: "Copyright &copy; 2021 Sean Stewart"
+site_url: https://python-norma.org
+repo_url: https://github.com/seandstewart/norma
+repo_name: seandstewart/norma
+theme:
+  name: "material"
+  palette:
+    primary: "cyan"
+    accent: "amber"
+    scheme: "preference"
+  font:
+    text: "IBM Plex Serif"
+    code: "IBM Plex Mono"
+plugins:
+  - search
+  - awesome-pages
+markdown_extensions:
+  - toc:
+      permalink: "🔖"
+  - smarty
+  - admonition
+  - footnotes
+  - codehilite
+  - pymdownx.arithmatex
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.critic
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:pymdownx.emoji.to_svg
+  - pymdownx.magiclink
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+extra:
+  social:
+    - icon: "fontawesome/brands/github-alt"
+      link: "https://github.com/seandstewart/norma"
+    - icon: "fontawesome/brands/twitter"
+      link: "https://twitter.com/MrSeanStewart"
+    - icon: "fontawesome/brands/linkedin"
+      link: "https://linkedin.com/in/seandstewart"
+  manifest: "img/favicon/site.webmanifest"

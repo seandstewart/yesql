@@ -1,0 +1,10 @@
+[run]
+omit =
+    setup.py
+    .venv*
+    *lib/python*
+    dist*
+    tests*
+    benchmark*
+    docs*
+    mypy.py

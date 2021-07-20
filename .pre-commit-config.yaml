@@ -1,0 +1,20 @@
+repos:
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v0.790
+    hooks:
+      - id: mypy
+        exclude: '.*tests/.*|.*docs/.*'
+        args: [--no-strict-optional, --ignore-missing-imports, --follow-imports=silent]
+  - repo: https://github.com/ambv/black
+    rev: 20.8b1
+    hooks:
+    - id: black
+      language_version: python3.8
+  - repo: https://gitlab.com/pycqa/flake8
+    rev: 3.8.4
+    hooks:
+    - id: flake8
+  - repo: .
+    rev: v2.0.33
+    hooks:
+    - id: export-requirements-dev

@@ -1,0 +1,56 @@
+[tool.poetry]
+name = "norma"
+version = "0.1.0"
+description = "Norma is a SQL-first data manipulation library that will replace your ORM."
+authors = ["Sean Stewart <sean_stewart@me.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+# Library
+python = "^3.8"
+typical = "^2.4"
+aiosql = "^3.2.0"
+PyPika = "^0.48.0"
+asyncpg = {version = "^0.22.0", optional = true}
+orjson = {version = "^3.5.1", optional = true}
+aiosqlite = {version = "^0.17.0", optional = true}
+# Docs
+mkdocs = {version = "^1.2.2", optional = true}
+mkdocs-material = {version = "^7.1.11", optional = true}
+mkdocs-awesome-pages-plugin = {version = "^2.5.0", optional = true}
+# Lint
+mypy = {version = "^0.910", optional = true}
+black = {version = "^21.7b0", optional = true}
+flake8 = {version = "^3.9.2", optional = true}
+# Test
+pytest = {version = "^6.2.4", optional = true}
+pytest-asyncio = {version = "^0.15.1", optional = true}
+pytest-cov = {version = "^2.12.1", optional = true}
+pytest-benchmark = {version = "^3.4.1", optional = true}
+
+[tool.poetry.extras]
+asyncpg = ["asyncpg", "orjson"]
+aiosqlite = ["aiosqlite"]
+docs = ["mkdocs", "mkdocs-material", "mkdocs-awesome-pages-plugin"]
+lint = ["mypy", "black", "flake8"]
+tests = ["pytest", "pytest-asyncio", "pytest-cov", "pytest-benchmark"]
+
+[tool.poetry.dev-dependencies]
+# Docs
+mkdocs = "^1.2.2"
+mkdocs-material = "^7.1.11"
+mkdocs-awesome-pages-plugin = "^2.5.0"
+# Lint
+mypy = "^0.910"
+black = "^21.7b0"
+flake8 = "^3.9.2"
+# Test
+pytest = "^6.2.4"
+pytest-asyncio = "^0.15.1"
+pytest-cov = "^2.12.1"
+pytest-benchmark = "^3.4.1"
+
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
