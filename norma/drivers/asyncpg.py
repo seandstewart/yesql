@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+from typing import AsyncIterator
 
 import asyncpg
 import orjson
@@ -9,7 +10,7 @@ import typic
 from norma import protos
 
 
-class AsyncPGConnector:
+class AsyncPGConnector(protos.ConnectorProtocol[asyncpg.Record]):
     """A simple connector for asyncpg."""
 
     TRANSIENT = (
@@ -22,24 +23,18 @@ class AsyncPGConnector:
         "dsn",
         "pool",
         "initialized",
-        "__lock",
+        "_lock",
     )
 
     def __init__(self, dsn: str, *, pool: asyncpg.pool.Pool = None, **connect_kwargs):
         self.dsn = dsn
         self.pool: asyncpg.pool.Pool = pool or create_pool(dsn, **connect_kwargs)
         self.initialized = False
-        self.__lock = None
+        self._lock = asyncio.Lock()
 
     def __repr__(self):
         dsn, initialized, open = self.dsn, self.initialized, self.open
         return f"<{self.__class__.__name__} {dsn=} {initialized=} {open=}>"
-
-    @property
-    def _lock(self) -> asyncio.Lock:
-        if self.__lock is None:
-            self.__lock = asyncio.Lock()
-        return self.__lock
 
     async def initialize(self):
         async with self._lock:
@@ -50,7 +45,7 @@ class AsyncPGConnector:
     @contextlib.asynccontextmanager
     async def connection(
         self, *, timeout: int = 10, c: asyncpg.Connection = None
-    ) -> asyncpg.Connection:
+    ) -> AsyncIterator[asyncpg.Connection]:
         await self.initialize()
         if c:
             yield c
@@ -60,11 +55,17 @@ class AsyncPGConnector:
 
     @contextlib.asynccontextmanager
     async def transaction(
-        self, *, connection: asyncpg.Connection = None
-    ) -> asyncpg.Connection:
+        self, *, connection: asyncpg.Connection = None, rollback: bool = False
+    ) -> AsyncIterator[asyncpg.Connection]:
         async with self.connection(c=connection) as conn:
-            async with conn.transaction():
+            if rollback:
+                t: asyncpg.Transaction = conn.transaction()
+                await t.start()
                 yield conn
+                await t.rollback()
+            else:
+                async with conn.transaction():
+                    yield conn
 
     async def close(self, timeout: int = 10):
         await asyncio.wait_for(self.pool.close(), timeout=timeout)

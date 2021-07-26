@@ -14,6 +14,11 @@ from typing import (
     Mapping,
     Type,
     runtime_checkable,
+    AsyncIterator,
+    Optional,
+    AsyncContextManager,
+    Awaitable,
+    Dict,
 )
 
 import aiosql.types
@@ -22,7 +27,7 @@ import typic
 from norma import drivers
 
 ModelT = TypeVar("ModelT")
-RawT = TypeVar("RawT")
+RawT = TypeVar("RawT", covariant=True, bound=Mapping[str, Any])
 ConnectionT = TypeVar("ConnectionT")
 
 
@@ -30,9 +35,6 @@ ConnectionT = TypeVar("ConnectionT")
 class ConnectorProtocol(Protocol[RawT]):
     TRANSIENT: ClassVar[Tuple[BaseException, ...]]
     initialized: bool
-
-    def __init__(self, *args, **kwargs):
-        ...
 
     @property
     @abc.abstractmethod
@@ -43,20 +45,22 @@ class ConnectorProtocol(Protocol[RawT]):
         ...
 
     @contextlib.asynccontextmanager
-    async def connection(
+    def connection(
         self, *, timeout: int = 10, c: ConnectionT = None
-    ) -> ConnectionT:
+    ) -> AsyncIterator[ConnectionT]:
         ...
 
     @contextlib.asynccontextmanager
-    async def transaction(self, *, connection: ConnectionT = None) -> ConnectionT:
+    def transaction(
+        self, *, connection: ConnectionT = None, rollback: bool = False
+    ) -> AsyncIterator[ConnectionT]:
         ...
 
     async def close(self, timeout: int = 10):
         ...
 
 
-_T = TypeVar("_T")
+_T = TypeVar("_T", covariant=True)
 
 
 class CursorProtocolT(Protocol[_T]):
@@ -66,13 +70,16 @@ class CursorProtocolT(Protocol[_T]):
     async def forward(self, n: int, *args, timeout: float = None, **kwargs):
         ...
 
-    async def fetch(self, n: int, *args, timeout: float = None, **kwargs):
+    async def fetch(
+        self, n: int, *args, timeout: float = None, **kwargs
+    ) -> Iterable[_T]:
         ...
 
-    async def fetchrow(self, *args, timeout: float = None, **kwargs):
+    async def fetchrow(self, *args, timeout: float = None, **kwargs) -> Optional[_T]:
         ...
 
 
+@runtime_checkable
 class MetadataT(Protocol):
     __slots__ = ()
     __driver__: ClassVar[drivers.SupportedDriversT]
@@ -109,5 +116,91 @@ class ServiceProtocolT(Generic[ModelT]):
     ) -> RawT:
         ...
 
-    def get_kvs(self, model: ModelT) -> Mapping[str, Any]:
+    def get_kvs(self, model: ModelT) -> Dict[str, Any]:
+        ...
+
+
+class QueryMethodProtocolT(Protocol[ModelT]):
+    __name__: str
+    __qualname__: str
+    __module__: str
+
+    async def __call__(
+        _,
+        self: ServiceProtocolT[ModelT],
+        *args,
+        connection: ConnectionT = None,
+        coerce: bool = True,
+        **kwargs,
+    ) -> Optional[RawT]:
+        ...
+
+
+class QueryMethodBulkProtocolT(Protocol[ModelT]):
+    __name__: str
+    __qualname__: str
+    __module__: str
+
+    async def __call__(
+        _,
+        self: ServiceProtocolT[ModelT],
+        *args,
+        connection: ConnectionT = None,
+        coerce: bool = True,
+        **kwargs,
+    ) -> Iterable[RawT]:
+        ...
+
+
+class QueryMethodCursorProtocolT(Protocol[ModelT]):
+    """The final signature for a query cursor method on a ServiceProtocol."""
+
+    __name__: str
+    __qualname__: str
+    __module__: str
+
+    async def __call__(
+        _,
+        self: ServiceProtocolT[ModelT],
+        *args,
+        connection: ConnectionT = None,
+        coerce: bool = True,
+        **kwargs,
+    ) -> AsyncContextManager[Union[CursorProtocolT[ModelT], CursorProtocolT[RawT]]]:
+        ...
+
+
+class CoerceableProtocolT(Protocol[ModelT]):
+    """The final signature for a query for a query method on a ServiceProtocol"""
+
+    __name__: str
+    __qualname__: str
+    __module__: str
+
+    async def __call__(
+        _,
+        self: ServiceProtocolT[ModelT],
+        *args,
+        connection: ConnectionT = None,
+        coerce: bool = True,
+        **kwargs,
+    ) -> Union[ModelT, RawT, None]:
+        ...
+
+
+class BulkCoerceableProtocolT(Protocol[ModelT]):
+    """The final query for a bulk query method on a ServiceProtocol"""
+
+    __name__: str
+    __qualname__: str
+    __module__: str
+
+    def __call__(
+        _,
+        self: ServiceProtocolT[ModelT],
+        *args,
+        connection: ConnectionT = None,
+        coerce: bool = True,
+        **kwargs,
+    ) -> Awaitable[Union[Iterable[ModelT], Iterable[RawT]]]:
         ...

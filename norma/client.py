@@ -17,7 +17,7 @@ from typing import (
     Optional,
     Generic,
     TypeVar,
-    Sequence,
+    cast,
 )
 
 import aiosql
@@ -25,7 +25,7 @@ import inflection
 import typic
 from aiosql.types import QueryFn
 
-from norma import protos, support
+from norma import protos, support, drivers
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +43,8 @@ class CoercingCursor(protos.CursorProtocolT[_MT]):
 
     def __init__(
         self,
-        service: protos.ServiceProtocolT[_MT, _RT],
-        cursor: protos.CursorProtocolT[_RT],
+        service: protos.ServiceProtocolT[_MT],
+        cursor: protos.CursorProtocolT,
     ):
         self.service = service
         self.cursor = cursor
@@ -57,25 +57,27 @@ class CoercingCursor(protos.CursorProtocolT[_MT]):
 
     async def fetch(
         self, n: int, *args, timeout: float = None, **kwargs
-    ) -> Sequence[_MT]:
+    ) -> Iterable[_MT]:
         page = await self.cursor.fetch(n, *args, timeout=timeout, **kwargs)
         return page and self.service.bulk_protocol(({**r} for r in page))
 
-    async def fetchrow(self, *args, timeout: float = None, **kwargs) -> _MT:
+    async def fetchrow(self, *args, timeout: float = None, **kwargs) -> Optional[_MT]:
         row = await self.cursor.fetchrow(*args, timeout=timeout, **kwargs)
         return row and self.service.protocol({**row})
 
 
-class Metadata(protos.MetadataT):
+class Metadata:
     __slots__ = ()
-    __driver__ = "asyncpg"
-    __primary_key__ = "id"
-    __exclude_fields__ = frozenset(("id", "created_at", "updated_at"))
+    __driver__: ClassVar[drivers.SupportedDriversT] = "asyncpg"
+    __primary_key__: ClassVar[str] = "id"
+    __exclude_fields__: ClassVar[FrozenSet[str]] = frozenset(
+        ("id", "created_at", "updated_at")
+    )
     __scalar_queries__: ClassVar[FrozenSet[str]] = frozenset(())
     __querylib__: ClassVar[Union[str, pathlib.Path]]
 
 
-class QueryService(Generic[_MT, _RT]):
+class QueryService(Generic[_MT]):
     """The base class for a 'service'.
 
     A 'service' is responsible for querying a specific table.
@@ -85,8 +87,8 @@ class QueryService(Generic[_MT, _RT]):
     """
 
     # User-defined class attributes
-    model: ClassVar[Type[_MT]] = Any
-    metadata: ClassVar[Type[Metadata]] = Metadata
+    model: ClassVar[Type[_MT]] = Any  # type: ignore
+    metadata: ClassVar[Type[protos.MetadataT]] = Metadata  # type: ignore
     # Generated attributes
     protocol: ClassVar[typic.SerdeProtocol[_MT]]
     bulk_protocol: ClassVar[typic.SerdeProtocol[Iterable[_MT]]]
@@ -97,13 +99,14 @@ class QueryService(Generic[_MT, _RT]):
     def __init__(
         self,
         *,
-        connector: protos.ConnectorProtocol[_RT] = None,
+        connector: protos.ConnectorProtocol = None,
         **connect_kwargs,
     ):
-        self.connector: protos.ConnectorProtocol[
-            _RT
-        ] = connector or support.get_connector_protocol(
-            self.metadata.__driver__, **connect_kwargs
+        self.connector: protos.ConnectorProtocol = (
+            connector
+            or support.get_connector_protocol(
+                self.metadata.__driver__, **connect_kwargs
+            )
         )
 
     def __init_subclass__(cls, **kwargs):
@@ -135,12 +138,12 @@ class QueryService(Generic[_MT, _RT]):
         **kwargs,
     ) -> int:
         name = query if isinstance(query, str) else query.__name__
-        query = getattr(self.queries, name)
-        sql = f"SELECT count(*) FROM ({query.sql.rstrip(';')}) AS q;"
+        queryfn: aiosql.types.QuerFn = getattr(self.queries, name)
+        sql = f"SELECT count(*) FROM ({queryfn.sql.rstrip(';')}) AS q;"
         async with self.connector.connection(c=connection) as c:
             return await self.queries.driver_adapter.select_value(
                 c,
-                query_name=query.__name__,
+                query_name=name,
                 sql=sql,
                 parameters=kwargs or args,
             )
@@ -155,29 +158,24 @@ class QueryService(Generic[_MT, _RT]):
         **kwargs,
     ) -> Union[protos.RawT, str]:
         name = query if isinstance(query, str) else query.__name__
-        query = getattr(self.queries, name)
+        queryfn: aiosql.types.QuerFn = getattr(self.queries, name)
         c: protos.ConnectionT
-        async with self.connector.connection(c=connection) as c:
-            transaction = c.transaction()
-            await transaction.start()
-            try:
+        async with self.connector.transaction(c=connection, rollback=True) as c:
+            selector, sql = (
+                self.queries.driver_adapter.select_one,
+                f"EXPLAIN ANALYZE {queryfn.sql}",
+            )
+            if format:
                 selector, sql = (
-                    self.queries.driver_adapter.select_one,
-                    f"EXPLAIN ANALYZE {query.sql}",
+                    self.queries.driver_adapter.select_value,
+                    f"EXPLAIN (FORMAT {format}) {queryfn.sql}",
                 )
-                if format:
-                    selector, sql = (
-                        self.queries.driver_adapter.select_value,
-                        f"EXPLAIN (FORMAT {format}) {query.sql}",
-                    )
-                return await selector(
-                    c,
-                    query_name=query.__name__,
-                    sql=sql,
-                    parameters=kwargs or args,
-                )
-            finally:
-                await transaction.rollback()
+            return await selector(
+                c,
+                query_name=name,
+                sql=sql,
+                parameters=kwargs or args,
+            )
 
     @classmethod
     def get_kvs(cls, model: protos.ModelT) -> Mapping:
@@ -204,9 +202,12 @@ class QueryService(Generic[_MT, _RT]):
             setattr(cls, name, bootstrapped)
 
 
-def bootstrap(cls: Type[protos.ServiceProtocolT[_MT, _RT]], func: QueryFn):
+def bootstrap(
+    cls: Type[protos.ServiceProtocolT[_MT]], func: QueryFn
+) -> BootstrappedMethodT:
     scalar = func.__name__ in cls.metadata.__scalar_queries__ or support.isscalar(func)
-    bulk = not scalar and support.isbulk(func)
+    bulk = cast(Literal[True, False], bool(not scalar and support.isbulk(func)))
+    run_query: BootstrappedMethodT
     if func.__name__.endswith("_cursor"):
         run_query = _bootstrap_cursor(func, scalar=scalar)
 
@@ -223,26 +224,30 @@ def bootstrap(cls: Type[protos.ServiceProtocolT[_MT, _RT]], func: QueryFn):
     return run_query
 
 
-def _bootstrap_cursor(func: QueryFn, *, scalar: bool):
+BootstrappedMethodT = Union[support.QueryFunctionT, support.CoerceableT]
+
+
+def _bootstrap_cursor(
+    func: QueryFn, *, scalar: bool
+) -> protos.QueryMethodCursorProtocolT:
     if scalar:
 
-        @support.retry
         @contextlib.asynccontextmanager
-        async def run_query(
+        async def run_scalar_query_cursor(
             self: protos.ServiceProtocolT,
             *args,
             connection: protos.ConnectionT = None,
+            coerce: bool = False,
             **kwargs,
         ):
             async with self.connector.connection(c=connection) as c:
                 async with func(c, *args, **kwargs) as cursor:
                     yield await cursor
 
-        return run_query
+        return cast(protos.QueryMethodCursorProtocolT, run_scalar_query_cursor)
 
-    @support.retry
     @contextlib.asynccontextmanager
-    async def run_query(
+    async def run_query_cursor(
         self: protos.ServiceProtocolT,
         *args,
         connection: protos.ConnectionT = None,
@@ -254,11 +259,15 @@ def _bootstrap_cursor(func: QueryFn, *, scalar: bool):
                 cursor = await factory
                 yield CoercingCursor(self, cursor) if coerce else cursor
 
+    return cast(protos.QueryMethodCursorProtocolT, run_query_cursor)
 
-def _bootstrap_persist(func: QueryFn, *, scalar: bool, bulk: bool):
+
+def _bootstrap_persist(
+    func: QueryFn, *, scalar: bool, bulk: Literal[True, False]
+) -> Union[support.QueryFunctionT, support.CoerceableT]:
     @support.retry
-    async def run_query(
-        self: protos.ServiceProtocolT,
+    async def run_persist_query(
+        self: protos.ServiceProtocolT[protos.ModelT],
         *,
         model: protos.ModelT = None,
         connection: protos.ConnectionT = None,
@@ -268,17 +277,21 @@ def _bootstrap_persist(func: QueryFn, *, scalar: bool, bulk: bool):
         if model:
             data = self.get_kvs(model)
         async with self.connector.connection(c=connection) as c:
-            return await func(c, *data)
+            return await func(c, **data)
 
     if not scalar:
-        run_query = support.coerceable(run_query, bulk=bulk)
+        return cast(
+            support.CoerceableT, support.coerceable(run_persist_query, bulk=bulk)
+        )
 
-    return run_query
+    return cast(support.QueryFunctionT, run_persist_query)
 
 
-def _bootstrap_default(func: QueryFn, *, scalar: bool, bulk: bool):
+def _bootstrap_default(
+    func: QueryFn, *, scalar: bool, bulk: Literal[True, False]
+) -> Union[support.QueryFunctionT, support.CoerceableT]:
     @support.retry
-    async def run_query(
+    async def run_default_query(
         self: protos.ServiceProtocolT,
         *args,
         connection: protos.ConnectionT = None,
@@ -289,6 +302,6 @@ def _bootstrap_default(func: QueryFn, *, scalar: bool, bulk: bool):
             return await func(c, *args, **kwargs)
 
     if not scalar:
-        run_query = support.coerceable(run_query, bulk=bulk)
+        cast(support.CoerceableT, support.coerceable(run_default_query, bulk=bulk))
 
-    return run_query
+    return cast(support.QueryFunctionT, run_default_query)

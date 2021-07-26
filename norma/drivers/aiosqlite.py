@@ -1,41 +1,28 @@
 import asyncio
 import contextlib
-from typing import AsyncContextManager
+from typing import AsyncIterator
 
 import aiosqlite
-import orjson
-import typic
 
 from norma import protos
 
 
-class AIOSQLiteConnector:
-    """A simple connector for aiosqlite."""
+class AIOSQLiteConnector(protos.ConnectorProtocol[aiosqlite.Row]):
+    """A ConnectorProtocol interface for aiosqlite."""
 
     TRANSIENT = (aiosqlite.OperationalError,)
 
-    __slots__ = (
-        "dsn",
-        "options",
-        "initialized",
-        "__lock",
-    )
+    __slots__ = ("dsn", "options", "initialized", "_lock")
 
     def __init__(self, dsn: str, **options):
         self.dsn = dsn
         self.initialized = False
         self.options = options
-        self.__lock = None
+        self._lock = asyncio.Lock()
 
     def __repr__(self):
         dsn, initialized, open = self.dsn, self.initialized, self.open
         return f"<{self.__class__.__name__} {dsn=} {initialized=} {open=}>"
-
-    @property
-    def _lock(self) -> asyncio.Lock:
-        if self.__lock is None:
-            self.__lock = asyncio.Lock()
-        return self.__lock
 
     async def initialize(self):
         async with self._lock:
@@ -49,7 +36,7 @@ class AIOSQLiteConnector:
     @contextlib.asynccontextmanager
     async def connection(
         self, *, timeout: int = 10, c: aiosqlite.Connection = None
-    ) -> AsyncContextManager[aiosqlite.Connection]:
+    ) -> AsyncIterator[aiosqlite.Connection]:
         await self.initialize()
         if c:
             yield c
@@ -63,13 +50,14 @@ class AIOSQLiteConnector:
                     await conn.rollback()
 
     @contextlib.asynccontextmanager
-    def transaction(
-        self, *, connection: aiosqlite.Connection = None
-    ) -> AsyncContextManager[aiosqlite.Connection]:
+    async def transaction(
+        self, *, connection: aiosqlite.Connection = None, rollback: bool = False
+    ) -> AsyncIterator[aiosqlite.Connection]:
         conn: aiosqlite.Connection
-        with self.connection(c=connection) as conn:
+        async with self.connection(c=connection) as conn:
             yield conn
-            await conn.commit()
+            if not rollback:
+                await conn.commit()
 
     async def close(self, timeout: int = 10):
         async with self._lock:

@@ -1,6 +1,6 @@
 [[package]]
 name = "aiosql"
-version = "3.2.1"
+version = "3.3.1"
 description = "Simple SQL in Python"
 category = "main"
 optional = false
@@ -26,7 +26,7 @@ name = "appdirs"
 version = "1.4.4"
 description = "A small Python module for determining appropriate platform-specific dirs, e.g. a \"user data dir\"."
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 
 [[package]]
@@ -47,7 +47,7 @@ name = "atomicwrites"
 version = "1.4.0"
 description = "Atomic file writes."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
@@ -55,7 +55,7 @@ name = "attrs"
 version = "21.2.0"
 description = "Classes Without Boilerplate"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [package.extras]
@@ -65,11 +65,23 @@ tests = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)"
 tests_no_zope = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "mypy", "pytest-mypy-plugins"]
 
 [[package]]
+name = "backports.entry-points-selectable"
+version = "1.1.0"
+description = "Compatibility shim providing selectable entry points for older implementations"
+category = "dev"
+optional = false
+python-versions = ">=2.7"
+
+[package.extras]
+docs = ["sphinx", "jaraco.packaging (>=8.2)", "rst.linker (>=1.9)"]
+testing = ["pytest (>=4.6)", "pytest-flake8", "pytest-cov", "pytest-black (>=0.3.7)", "pytest-mypy", "pytest-checkdocs (>=2.4)", "pytest-enabler (>=1.0.1)"]
+
+[[package]]
 name = "black"
 version = "21.7b0"
 description = "The uncompromising code formatter."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6.2"
 
 [package.dependencies]
@@ -91,15 +103,23 @@ name = "bracex"
 version = "2.1.1"
 description = "Bash style brace expander."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
+
+[[package]]
+name = "cfgv"
+version = "3.3.0"
+description = "Validate configuration and produce human readable error messages."
+category = "dev"
+optional = false
+python-versions = ">=3.6.1"
 
 [[package]]
 name = "click"
 version = "8.0.1"
 description = "Composable command line interface toolkit"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [package.dependencies]
@@ -110,7 +130,7 @@ name = "colorama"
 version = "0.4.4"
 description = "Cross-platform colored terminal text."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
@@ -126,18 +146,34 @@ name = "coverage"
 version = "5.5"
 description = "Code coverage measurement for Python"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, <4"
 
 [package.extras]
 toml = ["toml"]
 
 [[package]]
+name = "distlib"
+version = "0.3.2"
+description = "Distribution utilities"
+category = "dev"
+optional = false
+python-versions = "*"
+
+[[package]]
+name = "filelock"
+version = "3.0.12"
+description = "A platform independent file lock."
+category = "dev"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "flake8"
 version = "3.9.2"
 description = "the modular source code checker: pep8 pyflakes and co"
 category = "main"
-optional = true
+optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
 
 [package.dependencies]
@@ -154,15 +190,15 @@ optional = false
 python-versions = ">=3.6"
 
 [package.extras]
-dev = ["pre-commit (2.12.1)"]
-test = ["black (21.5b1)", "flake8 (3.9.2)", "isort (5.8.0)", "mypy (0.812)", "pytest (6.2.4)", "pytest-cov (2.11.1)", "typing-extensions (3.10.0.0)"]
+dev = ["pre-commit (==2.12.1)"]
+test = ["black (==21.5b1)", "flake8 (==3.9.2)", "isort (==5.8.0)", "mypy (==0.812)", "pytest (==6.2.4)", "pytest-cov (==2.11.1)", "typing-extensions (==3.10.0.0)"]
 
 [[package]]
 name = "ghp-import"
 version = "2.0.1"
 description = "Copy your docs directly to the gh-pages branch."
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 
 [package.dependencies]
@@ -172,11 +208,22 @@ python-dateutil = ">=2.8.1"
 dev = ["twine", "markdown", "flake8"]
 
 [[package]]
+name = "identify"
+version = "2.2.11"
+description = "File identification library for Python"
+category = "dev"
+optional = false
+python-versions = ">=3.6.1"
+
+[package.extras]
+license = ["editdistance-s"]
+
+[[package]]
 name = "importlib-metadata"
 version = "4.6.1"
 description = "Read metadata from Python packages"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [package.dependencies]
@@ -200,7 +247,7 @@ name = "iniconfig"
 version = "1.1.1"
 description = "iniconfig: brain-dead simple config-ini parsing"
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 
 [[package]]
@@ -208,7 +255,7 @@ name = "jinja2"
 version = "3.0.1"
 description = "A very fast and expressive template engine."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [package.dependencies]
@@ -222,7 +269,7 @@ name = "markdown"
 version = "3.3.4"
 description = "Python implementation of Markdown."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [package.extras]
@@ -233,7 +280,7 @@ name = "markupsafe"
 version = "2.0.1"
 description = "Safely add untrusted strings to HTML/XML markup."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [[package]]
@@ -241,7 +288,7 @@ name = "mccabe"
 version = "0.6.1"
 description = "McCabe checker, plugin for flake8"
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 
 [[package]]
@@ -249,7 +296,7 @@ name = "mergedeep"
 version = "1.3.4"
 description = "A deep merge function for 🐍."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [[package]]
@@ -257,7 +304,7 @@ name = "mkdocs"
 version = "1.2.2"
 description = "Project documentation with Markdown."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [package.dependencies]
@@ -280,7 +327,7 @@ name = "mkdocs-awesome-pages-plugin"
 version = "2.5.0"
 description = "An MkDocs plugin that simplifies configuring page titles and their order"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.5"
 
 [package.dependencies]
@@ -289,10 +336,10 @@ wcmatch = ">=7"
 
 [[package]]
 name = "mkdocs-material"
-version = "7.1.11"
+version = "7.2.1"
 description = "A Material Design theme for MkDocs"
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 
 [package.dependencies]
@@ -307,7 +354,7 @@ name = "mkdocs-material-extensions"
 version = "1.0.1"
 description = "Extension pack for Python Markdown."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.5"
 
 [package.dependencies]
@@ -318,7 +365,7 @@ name = "mypy"
 version = "0.910"
 description = "Optional static typing for Python"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.5"
 
 [package.dependencies]
@@ -335,7 +382,15 @@ name = "mypy-extensions"
 version = "0.4.3"
 description = "Experimental type system extensions for programs checked with the mypy typechecker."
 category = "main"
-optional = true
+optional = false
+python-versions = "*"
+
+[[package]]
+name = "nodeenv"
+version = "1.6.0"
+description = "Node.js virtual environment builder"
+category = "dev"
+optional = false
 python-versions = "*"
 
 [[package]]
@@ -351,7 +406,7 @@ name = "packaging"
 version = "21.0"
 description = "Core utilities for Python packages"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [package.dependencies]
@@ -362,7 +417,7 @@ name = "pathspec"
 version = "0.9.0"
 description = "Utility library for gitignore style pattern matching of file paths."
 category = "main"
-optional = true
+optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
 
 [[package]]
@@ -378,22 +433,50 @@ python-dateutil = ">=2.6,<3.0"
 pytzdata = ">=2020.1"
 
 [[package]]
+name = "platformdirs"
+version = "2.1.0"
+description = "A small Python module for determining appropriate platform-specific dirs, e.g. a \"user data dir\"."
+category = "dev"
+optional = false
+python-versions = ">=3.6"
+
+[package.extras]
+docs = ["Sphinx (>=4)", "furo (>=2021.7.5b38)", "proselint (>=0.10.2)", "sphinx-autodoc-typehints (>=1.12)"]
+test = ["appdirs (==1.4.4)", "pytest (>=6)", "pytest-cov (>=2.7)", "pytest-mock (>=3.6)"]
+
+[[package]]
 name = "pluggy"
 version = "0.13.1"
 description = "plugin and hook calling mechanisms for python"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [package.extras]
 dev = ["pre-commit", "tox"]
 
 [[package]]
+name = "pre-commit"
+version = "2.13.0"
+description = "A framework for managing and maintaining multi-language pre-commit hooks."
+category = "dev"
+optional = false
+python-versions = ">=3.6.1"
+
+[package.dependencies]
+cfgv = ">=2.0.0"
+identify = ">=1.0.0"
+nodeenv = ">=0.11.1"
+pyyaml = ">=5.1"
+toml = "*"
+virtualenv = ">=20.0.8"
+
+[[package]]
 name = "py"
 version = "1.10.0"
 description = "library with cross-python path, ini-parsing, io, code, log facilities"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
@@ -401,7 +484,7 @@ name = "py-cpuinfo"
 version = "8.0.0"
 description = "Get CPU info with pure Python 2 & 3"
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 
 [[package]]
@@ -409,7 +492,7 @@ name = "pycodestyle"
 version = "2.7.0"
 description = "Python style guide checker"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
@@ -417,7 +500,7 @@ name = "pyflakes"
 version = "2.3.1"
 description = "passive checker of Python programs"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
@@ -425,7 +508,7 @@ name = "pygments"
 version = "2.9.0"
 description = "Pygments is a syntax highlighting package written in Python."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.5"
 
 [[package]]
@@ -433,7 +516,7 @@ name = "pymdown-extensions"
 version = "8.2"
 description = "Extension pack for Python Markdown."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [package.dependencies]
@@ -444,12 +527,12 @@ name = "pyparsing"
 version = "2.4.7"
 description = "Python parsing module"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 
 [[package]]
 name = "pypika"
-version = "0.48.7"
+version = "0.48.8"
 description = "A SQL query builder API for Python"
 category = "main"
 optional = false
@@ -460,7 +543,7 @@ name = "pytest"
 version = "6.2.4"
 description = "pytest: simple powerful testing with Python"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [package.dependencies]
@@ -481,7 +564,7 @@ name = "pytest-asyncio"
 version = "0.15.1"
 description = "Pytest support for asyncio."
 category = "main"
-optional = true
+optional = false
 python-versions = ">= 3.6"
 
 [package.dependencies]
@@ -495,7 +578,7 @@ name = "pytest-benchmark"
 version = "3.4.1"
 description = "A ``pytest`` fixture for benchmarking code. It will group the tests into rounds that are calibrated to the chosen timer."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [package.dependencies]
@@ -512,7 +595,7 @@ name = "pytest-cov"
 version = "2.12.1"
 description = "Pytest plugin for measuring coverage."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [package.dependencies]
@@ -547,7 +630,7 @@ name = "pyyaml"
 version = "5.4.1"
 description = "YAML parser and emitter for Python"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*"
 
 [[package]]
@@ -555,7 +638,7 @@ name = "pyyaml-env-tag"
 version = "0.1"
 description = "A custom YAML tag for referencing environment variables in YAML files. "
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [package.dependencies]
@@ -566,7 +649,7 @@ name = "regex"
 version = "2021.7.6"
 description = "Alternative regular expression module, to replace re."
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 
 [[package]]
@@ -582,20 +665,28 @@ name = "toml"
 version = "0.10.2"
 description = "Python Library for Tom's Obvious, Minimal Language"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 
 [[package]]
 name = "tomli"
-version = "1.0.4"
+version = "1.1.0"
 description = "A lil' TOML parser"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [[package]]
+name = "types-orjson"
+version = "0.1.1"
+description = "Typing stubs for orjson"
+category = "main"
+optional = true
+python-versions = "*"
+
+[[package]]
 name = "typical"
-version = "2.4.0"
+version = "2.4.2"
 description = "Typical: Python's Typing Toolkit."
 category = "main"
 optional = false
@@ -623,11 +714,30 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "virtualenv"
+version = "20.6.0"
+description = "Virtual Python Environment builder"
+category = "dev"
+optional = false
+python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
+
+[package.dependencies]
+"backports.entry-points-selectable" = ">=1.0.4"
+distlib = ">=0.3.1,<1"
+filelock = ">=3.0.0,<4"
+platformdirs = ">=2,<3"
+six = ">=1.9.0,<2"
+
+[package.extras]
+docs = ["proselint (>=0.10.2)", "sphinx (>=3)", "sphinx-argparse (>=0.2.5)", "sphinx-rtd-theme (>=0.4.3)", "towncrier (>=19.9.0rc1)"]
+testing = ["coverage (>=4)", "coverage-enable-subprocess (>=1)", "flaky (>=3)", "pytest (>=4)", "pytest-env (>=0.6.2)", "pytest-freezegun (>=0.4.1)", "pytest-mock (>=2)", "pytest-randomly (>=1)", "pytest-timeout (>=1)", "packaging (>=20.0)", "xonsh (>=0.9.16)"]
+
+[[package]]
 name = "watchdog"
 version = "2.1.3"
 description = "Filesystem events monitoring"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [package.extras]
@@ -638,7 +748,7 @@ name = "wcmatch"
 version = "8.2"
 description = "Wildcard/glob file name matcher."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [package.dependencies]
@@ -649,7 +759,7 @@ name = "zipp"
 version = "3.5.0"
 description = "Backport of pathlib-compatible object wrapper for zip files"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [package.extras]
@@ -660,18 +770,18 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 aiosqlite = ["aiosqlite"]
 asyncpg = ["asyncpg", "orjson"]
 docs = ["mkdocs", "mkdocs-material", "mkdocs-awesome-pages-plugin"]
-lint = ["mypy", "black", "flake8"]
+lint = ["mypy", "black", "flake8", "types-orjson"]
 tests = ["pytest", "pytest-asyncio", "pytest-cov", "pytest-benchmark"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "4ec826affc61bdca182d6ec80dbac6329b9024b7462393e62b2baf1865d760d3"
+content-hash = "97e9981666d0f6c6d76b344afec5904417b08dd7ddbe89e93500936686f3e225"
 
 [metadata.files]
 aiosql = [
-    {file = "aiosql-3.2.1-py3-none-any.whl", hash = "sha256:5deaafcc54d77e63021fbaeab29c5fcd8343135ad094a04e745dbff46a018ccb"},
-    {file = "aiosql-3.2.1.tar.gz", hash = "sha256:7a9be1985dd95f839d5992326d6af657c989971326be09b0566f270a64228191"},
+    {file = "aiosql-3.3.1-py3-none-any.whl", hash = "sha256:467067f2d237e2ccc47a3f651ae6bd128d89287a5dbf1357c065c9be37947cbc"},
+    {file = "aiosql-3.3.1.tar.gz", hash = "sha256:e7144b0e96c2783b79002657497b3a16ee41068290adc1e89cf08cb3974c76fa"},
 ]
 aiosqlite = [
     {file = "aiosqlite-0.17.0-py3-none-any.whl", hash = "sha256:6c49dc6d3405929b1d08eeccc72306d3677503cc5e5e43771efc1e00232e8231"},
@@ -706,6 +816,10 @@ attrs = [
     {file = "attrs-21.2.0-py2.py3-none-any.whl", hash = "sha256:149e90d6d8ac20db7a955ad60cf0e6881a3f20d37096140088356da6c716b0b1"},
     {file = "attrs-21.2.0.tar.gz", hash = "sha256:ef6aaac3ca6cd92904cdd0d83f629a15f18053ec84e6432106f7a4d04ae4f5fb"},
 ]
+"backports.entry-points-selectable" = [
+    {file = "backports.entry_points_selectable-1.1.0-py2.py3-none-any.whl", hash = "sha256:a6d9a871cde5e15b4c4a53e3d43ba890cc6861ec1332c9c2428c92f977192acc"},
+    {file = "backports.entry_points_selectable-1.1.0.tar.gz", hash = "sha256:988468260ec1c196dab6ae1149260e2f5472c9110334e5d51adcb77867361f6a"},
+]
 black = [
     {file = "black-21.7b0-py3-none-any.whl", hash = "sha256:1c7aa6ada8ee864db745b22790a32f94b2795c253a75d6d9b5e439ff10d23116"},
     {file = "black-21.7b0.tar.gz", hash = "sha256:c8373c6491de9362e39271630b65b964607bc5c79c83783547d76c839b3aa219"},
@@ -713,6 +827,10 @@ black = [
 bracex = [
     {file = "bracex-2.1.1-py3-none-any.whl", hash = "sha256:64e2a6d14de9c8e022cf40539ac8468ba7c4b99550a2b05fc87fd20e392e568f"},
     {file = "bracex-2.1.1.tar.gz", hash = "sha256:01f715cd0ed7a622ec8b32322e715813f7574de531f09b70f6f3b2c10f682425"},
+]
+cfgv = [
+    {file = "cfgv-3.3.0-py2.py3-none-any.whl", hash = "sha256:b449c9c6118fe8cca7fa5e00b9ec60ba08145d281d52164230a69211c5d597a1"},
+    {file = "cfgv-3.3.0.tar.gz", hash = "sha256:9e600479b3b99e8af981ecdfc80a0296104ee610cab48a5ae4ffd0b668650eb1"},
 ]
 click = [
     {file = "click-8.0.1-py3-none-any.whl", hash = "sha256:fba402a4a47334742d782209a7c79bc448911afe1149d07bdabdf480b3e2f4b6"},
@@ -780,6 +898,14 @@ coverage = [
     {file = "coverage-5.5-pp37-none-any.whl", hash = "sha256:2a3859cb82dcbda1cfd3e6f71c27081d18aa251d20a17d87d26d4cd216fb0af4"},
     {file = "coverage-5.5.tar.gz", hash = "sha256:ebe78fe9a0e874362175b02371bdfbee64d8edc42a044253ddf4ee7d3c15212c"},
 ]
+distlib = [
+    {file = "distlib-0.3.2-py2.py3-none-any.whl", hash = "sha256:23e223426b28491b1ced97dc3bbe183027419dfc7982b4fa2f05d5f3ff10711c"},
+    {file = "distlib-0.3.2.zip", hash = "sha256:106fef6dc37dd8c0e2c0a60d3fca3e77460a48907f335fa28420463a6f799736"},
+]
+filelock = [
+    {file = "filelock-3.0.12-py3-none-any.whl", hash = "sha256:929b7d63ec5b7d6b71b0fa5ac14e030b3f70b75747cef1b10da9b879fef15836"},
+    {file = "filelock-3.0.12.tar.gz", hash = "sha256:18d82244ee114f543149c66a6e0c14e9c4f8a1044b5cdaadd0f82159d6a6ff59"},
+]
 flake8 = [
     {file = "flake8-3.9.2-py2.py3-none-any.whl", hash = "sha256:bf8fd333346d844f616e8d47905ef3a3384edae6b4e9beb0c5101e25e3110907"},
     {file = "flake8-3.9.2.tar.gz", hash = "sha256:07528381786f2a6237b061f6e96610a4167b226cb926e2aa2b6b1d78057c576b"},
@@ -790,6 +916,10 @@ future-typing = [
 ]
 ghp-import = [
     {file = "ghp-import-2.0.1.tar.gz", hash = "sha256:753de2eace6e0f7d4edfb3cce5e3c3b98cd52aadb80163303d1d036bda7b4483"},
+]
+identify = [
+    {file = "identify-2.2.11-py2.py3-none-any.whl", hash = "sha256:7abaecbb414e385752e8ce02d8c494f4fbc780c975074b46172598a28f1ab839"},
+    {file = "identify-2.2.11.tar.gz", hash = "sha256:a0e700637abcbd1caae58e0463861250095dfe330a8371733a471af706a4a29a"},
 ]
 importlib-metadata = [
     {file = "importlib_metadata-4.6.1-py3-none-any.whl", hash = "sha256:9f55f560e116f8643ecf2922d9cd3e1c7e8d52e683178fecd9d08f6aa357e11e"},
@@ -864,8 +994,8 @@ mkdocs-awesome-pages-plugin = [
     {file = "mkdocs_awesome_pages_plugin-2.5.0-py3-none-any.whl", hash = "sha256:a215eab780757734a84e33dfa3f7d1141e43576d47aadc1b8f869a7463162c69"},
 ]
 mkdocs-material = [
-    {file = "mkdocs-material-7.1.11.tar.gz", hash = "sha256:cad3a693f1c28823370578e5b9c9aea418bddae0c7348ab734537391e9f2b1e5"},
-    {file = "mkdocs_material-7.1.11-py2.py3-none-any.whl", hash = "sha256:0bcfb788020b72b0ebf5b2722ddf89534acaed8c3feb39c2d6dda239b49dec45"},
+    {file = "mkdocs-material-7.2.1.tar.gz", hash = "sha256:3cd33ea5aac6ed693edea9fd93862513f996cfe522b72d759598b50286c4fe26"},
+    {file = "mkdocs_material-7.2.1-py2.py3-none-any.whl", hash = "sha256:16de6cd9f87da3bcd18d4585150ad5485723878450aa331b3e8859d002989083"},
 ]
 mkdocs-material-extensions = [
     {file = "mkdocs-material-extensions-1.0.1.tar.gz", hash = "sha256:6947fb7f5e4291e3c61405bad3539d81e0b3cd62ae0d66ced018128af509c68f"},
@@ -899,6 +1029,10 @@ mypy = [
 mypy-extensions = [
     {file = "mypy_extensions-0.4.3-py2.py3-none-any.whl", hash = "sha256:090fedd75945a69ae91ce1303b5824f428daf5a028d2f6ab8a299250a846f15d"},
     {file = "mypy_extensions-0.4.3.tar.gz", hash = "sha256:2d82818f5bb3e369420cb3c4060a7970edba416647068eb4c5343488a6c604a8"},
+]
+nodeenv = [
+    {file = "nodeenv-1.6.0-py2.py3-none-any.whl", hash = "sha256:621e6b7076565ddcacd2db0294c0381e01fd28945ab36bcf00f41c5daf63bef7"},
+    {file = "nodeenv-1.6.0.tar.gz", hash = "sha256:3ef13ff90291ba2a4a7a4ff9a979b63ffdd00a464dbe04acf0ea6471517a4c2b"},
 ]
 orjson = [
     {file = "orjson-3.6.0-cp310-cp310-manylinux_2_24_aarch64.whl", hash = "sha256:53ef160ac1b27d0417005e865ec1478044db4289b25beadff2ab4ce2c74a0f22"},
@@ -957,9 +1091,17 @@ pendulum = [
     {file = "pendulum-2.1.2-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:94b1fc947bfe38579b28e1cccb36f7e28a15e841f30384b5ad6c5e31055c85d7"},
     {file = "pendulum-2.1.2.tar.gz", hash = "sha256:b06a0ca1bfe41c990bbf0c029f0b6501a7f2ec4e38bfec730712015e8860f207"},
 ]
+platformdirs = [
+    {file = "platformdirs-2.1.0-py3-none-any.whl", hash = "sha256:b2b30ae52404f93e2024e85bba29329b85715d6b2f18ffe90ecd25a5c67553df"},
+    {file = "platformdirs-2.1.0.tar.gz", hash = "sha256:1964be5aba107a7ccb7de0e6f1f1bfde0dee51641f0e733028121f8e02e2e16b"},
+]
 pluggy = [
     {file = "pluggy-0.13.1-py2.py3-none-any.whl", hash = "sha256:966c145cd83c96502c3c3868f50408687b38434af77734af1e9ca461a4081d2d"},
     {file = "pluggy-0.13.1.tar.gz", hash = "sha256:15b2acde666561e1298d71b523007ed7364de07029219b604cf808bfa1c765b0"},
+]
+pre-commit = [
+    {file = "pre_commit-2.13.0-py2.py3-none-any.whl", hash = "sha256:b679d0fddd5b9d6d98783ae5f10fd0c4c59954f375b70a58cbe1ce9bcf9809a4"},
+    {file = "pre_commit-2.13.0.tar.gz", hash = "sha256:764972c60693dc668ba8e86eb29654ec3144501310f7198742a767bec385a378"},
 ]
 py = [
     {file = "py-1.10.0-py2.py3-none-any.whl", hash = "sha256:3b80836aa6d1feeaa108e046da6423ab8f6ceda6468545ae8d02d9d58d18818a"},
@@ -989,7 +1131,7 @@ pyparsing = [
     {file = "pyparsing-2.4.7.tar.gz", hash = "sha256:c203ec8783bf771a155b207279b9bccb8dea02d8f0c9e5f8ead507bc3246ecc1"},
 ]
 pypika = [
-    {file = "pypika-0.48.7.tar.gz", hash = "sha256:52c67a8e6a3f1156e96cfd3989c07a4b03603391b0982edd2b56854a4d752eba"},
+    {file = "pypika-0.48.8.tar.gz", hash = "sha256:45af481d8523d60f87e308dee6ff5c454f331c8ce3a675e5398fbea6c20fe1b1"},
 ]
 pytest = [
     {file = "pytest-6.2.4-py3-none-any.whl", hash = "sha256:91ef2131a9bd6be8f76f1f08eac5c5317221d6ad1e143ae03894b862e8976890"},
@@ -1102,17 +1244,25 @@ toml = [
     {file = "toml-0.10.2.tar.gz", hash = "sha256:b3bda1d108d5dd99f4a20d24d9c348e91c4db7ab1b749200bded2f839ccbe68f"},
 ]
 tomli = [
-    {file = "tomli-1.0.4-py3-none-any.whl", hash = "sha256:0713b16ff91df8638a6a694e295c8159ab35ba93e3424a626dd5226d386057be"},
-    {file = "tomli-1.0.4.tar.gz", hash = "sha256:be670d0d8d7570fd0ea0113bd7bb1ba3ac6706b4de062cc4c952769355c9c268"},
+    {file = "tomli-1.1.0-py3-none-any.whl", hash = "sha256:f4a182048010e89cbec0ae4686b21f550a7f2903f665e34a6de58ec15424f919"},
+    {file = "tomli-1.1.0.tar.gz", hash = "sha256:33d7984738f8bb699c9b0a816eb646a8178a69eaa792d258486776a5d21b8ca5"},
+]
+types-orjson = [
+    {file = "types-orjson-0.1.1.tar.gz", hash = "sha256:7454bfbaed27900a844bb9d8e211b69f1c335f0b9e3541d4950a793db41c104d"},
+    {file = "types_orjson-0.1.1-py2.py3-none-any.whl", hash = "sha256:92f85986261ea1a5cb215e4b35e4016631d35163a372f023918750f340ea737f"},
 ]
 typical = [
-    {file = "typical-2.4.0-py3-none-any.whl", hash = "sha256:19151dbef43d6f18ba4cd7bdfc01eefd707b03d7683dd357cf533a4455c68608"},
-    {file = "typical-2.4.0.tar.gz", hash = "sha256:4d1e1fea64aa7de15283e81de61f8a9438dfdea24f08aca296247c42136ea946"},
+    {file = "typical-2.4.2-py3-none-any.whl", hash = "sha256:89180725751bf8fe6a6e7ba3d625d1ace9ccaf54d54afc476c072738c7499103"},
+    {file = "typical-2.4.2.tar.gz", hash = "sha256:5a5a097ecbdab04fda86202b4afd6a8de834ba903157f56308b50db06acd14a1"},
 ]
 typing-extensions = [
     {file = "typing_extensions-3.10.0.0-py2-none-any.whl", hash = "sha256:0ac0f89795dd19de6b97debb0c6af1c70987fd80a2d62d1958f7e56fcc31b497"},
     {file = "typing_extensions-3.10.0.0-py3-none-any.whl", hash = "sha256:779383f6086d90c99ae41cf0ff39aac8a7937a9283ce0a414e5dd782f4c94a84"},
     {file = "typing_extensions-3.10.0.0.tar.gz", hash = "sha256:50b6f157849174217d0656f99dc82fe932884fb250826c18350e159ec6cdf342"},
+]
+virtualenv = [
+    {file = "virtualenv-20.6.0-py2.py3-none-any.whl", hash = "sha256:e4fc84337dce37ba34ef520bf2d4392b392999dbe47df992870dc23230f6b758"},
+    {file = "virtualenv-20.6.0.tar.gz", hash = "sha256:51df5d8a2fad5d1b13e088ff38a433475768ff61f202356bb9812c454c20ae45"},
 ]
 watchdog = [
     {file = "watchdog-2.1.3-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:9628f3f85375a17614a2ab5eac7665f7f7be8b6b0a2a228e6f6a2e91dd4bfe26"},

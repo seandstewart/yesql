@@ -1,46 +1,74 @@
+from __future__ import annotations
+
 import asyncio
 import functools
 import logging
-from typing import Callable, Awaitable, Union, Iterable, Optional, Type, Mapping
+from typing import (
+    Callable,
+    Awaitable,
+    Union,
+    Optional,
+    Type,
+    Mapping,
+    cast,
+    Iterable,
+    overload,
+    Literal,
+)
 
 from aiosql.types import QueryFn, SQLOperationType
 
 from norma import protos, drivers
 
-CoerceableT = Callable[..., Awaitable[Union[protos.RawT, Iterable[protos.RawT]]]]
+
+QueryFunctionT = Union[protos.QueryMethodProtocolT, protos.QueryMethodBulkProtocolT]
+CoerceableT = Union[protos.CoerceableProtocolT, protos.BulkCoerceableProtocolT]
+CoerceableWrapperT = Callable[
+    [protos.QueryMethodProtocolT[protos.ModelT]],
+    protos.CoerceableProtocolT[protos.ModelT],
+]
+BulkCoerceableWrapperT = Callable[
+    [protos.QueryMethodBulkProtocolT[protos.ModelT]],
+    protos.BulkCoerceableProtocolT[protos.ModelT],
+]
 
 
-def coerceable(func: CoerceableT = None, *, bulk: bool = False):
-    """A helper which will automatically coerce an protos.RawT to a model."""
+@overload
+def coerceable(
+    func: protos.QueryMethodProtocolT[protos.ModelT], *, bulk: bool = False
+) -> protos.CoerceableProtocolT[protos.ModelT]:
+    ...
 
-    def _maybe_coerce_result(func_: CoerceableT):
-        if bulk:
 
-            @functools.wraps(func_)
-            async def _maybe_coerce_bulk_result_wrapper(
-                self: protos.ServiceProtocolT, *args, **kwargs
-            ):
-                coerce = kwargs.get("coerce", True)
-                res: Iterable[protos.RawT] = await func_(self, *args, **kwargs)
-                return (
-                    self.bulk_protocol.transmute(({**r} for r in res))
-                    if coerce and res
-                    else res
-                )
+@overload
+def coerceable(*, bulk: Literal[False] = False) -> CoerceableWrapperT:
+    ...
 
-            return _maybe_coerce_bulk_result_wrapper
 
-        @functools.wraps(func_)
-        async def _maybe_coerce_result_wrapper(
-            self: protos.ServiceProtocolT, *args, **kwargs
-        ):
-            coerce = kwargs.get("coerce", True)
-            res: Optional[protos.RawT] = await func_(self, *args, **kwargs)
-            return self.protocol.transmute({**res}) if coerce and res else res
+@overload
+def coerceable(
+    func: protos.QueryMethodBulkProtocolT[protos.ModelT], *, bulk: Literal[True]
+) -> protos.BulkCoerceableProtocolT[protos.ModelT]:
+    ...
 
-        return _maybe_coerce_result_wrapper
 
-    return _maybe_coerce_result(func) if func else _maybe_coerce_result
+@overload
+def coerceable(*, bulk: Literal[True]) -> BulkCoerceableWrapperT:
+    ...
+
+
+def coerceable(func: QueryFunctionT = None, *, bulk: bool = False):
+    """A helper which will automatically coerce a protos.RawT to a model."""
+    if bulk:
+        bulk_func = cast(Optional[protos.QueryMethodBulkProtocolT], func)
+        return (
+            _maybe_coerce_bulk_result(bulk_func)
+            if bulk_func
+            else _maybe_coerce_bulk_result
+        )
+
+    row_func = cast(Optional[protos.QueryMethodProtocolT], func)
+    return _maybe_coerce_result(row_func) if row_func else _maybe_coerce_result
 
 
 def retry(
@@ -70,7 +98,7 @@ def retry(
         async def _retry(self: protos.ServiceProtocolT, *args, **kwargs):
             try:
                 return await func_(self, *args, **kwargs)
-            except (*errors, *self.connector.TRANSIENT) as e:
+            except (*_errors, *self.connector.TRANSIENT) as e:
                 _logger.info(
                     "Got a watched error. Entering retry loop.",
                     error=e.__class__.__name__,
@@ -92,6 +120,46 @@ def retry(
     return _retry_impl(func) if func else _retry_impl
 
 
+def _maybe_coerce_bulk_result(
+    f: protos.QueryMethodBulkProtocolT[protos.ModelT],
+) -> protos.BulkCoerceableProtocolT[protos.ModelT]:
+    @functools.wraps(f)
+    async def _maybe_coerce_bulk_result_wrapper(
+        self: protos.ServiceProtocolT[protos.ModelT],
+        *args,
+        connection: protos.ConnectionT = None,
+        coerce: bool = True,
+        **kwargs,
+    ) -> Union[Iterable[protos.ModelT], Iterable[protos.RawT]]:
+        res: Iterable[protos.RawT] = await f(
+            self, *args, coerce=coerce, connection=connection, **kwargs
+        )
+        if res and coerce:
+            return self.bulk_protocol.transmute(({**r} for r in res))  # type: ignore
+        return res
+
+    return cast(protos.BulkCoerceableProtocolT, _maybe_coerce_bulk_result_wrapper)
+
+
+def _maybe_coerce_result(
+    f: protos.QueryMethodProtocolT[protos.ModelT],
+) -> protos.CoerceableProtocolT[protos.ModelT]:
+    @functools.wraps(f)  # type: ignore
+    async def _maybe_coerce_result_wrapper(
+        self: protos.ServiceProtocolT[protos.ModelT],
+        *args,
+        connection: protos.ConnectionT = None,
+        coerce: bool = True,
+        **kwargs,
+    ) -> Union[protos.ModelT, protos.RawT, None]:
+        res = await f(self, *args, coerce=coerce, connection=connection, **kwargs)
+        if res and coerce:
+            return self.protocol.transmute({**res})
+        return res
+
+    return cast(protos.CoerceableProtocolT, _maybe_coerce_result_wrapper)
+
+
 def get_connector_protocol(
     driver: drivers.SupportedDriversT, **connect_kwargs
 ) -> protos.ConnectorProtocol:
@@ -99,7 +167,7 @@ def get_connector_protocol(
         raise ValueError(
             f"Supported drivers are: {(*_DRIVER_TO_CONNECTOR,)}. Got: {driver!r}"
         )
-    return _DRIVER_TO_CONNECTOR[driver](**connect_kwargs)
+    return _DRIVER_TO_CONNECTOR[driver](**connect_kwargs)  # type: ignore
 
 
 _DRIVER_TO_CONNECTOR: Mapping[

@@ -1,11 +1,13 @@
+import contextlib
 from typing import (
     Union,
     AsyncContextManager,
     Any,
     Awaitable,
-    Collection,
     TypeVar,
     Mapping,
+    AsyncIterator,
+    Iterable,
 )
 
 import pypika
@@ -19,9 +21,7 @@ _RT = TypeVar("_RT")
 class DynamicQueryLib:
     __slots__ = ("service", "table", "builder")
 
-    def __init__(
-        self, service: protos.ServiceProtocolT[_MT, _RT], *, schema: str = None
-    ):
+    def __init__(self, service: protos.ServiceProtocolT, *, schema: str = None):
         self.service = service
         self.table = self._get_table(service.metadata.__tablename__, schema=schema)
         self.builder = self._get_query_builder(
@@ -37,7 +37,7 @@ class DynamicQueryLib:
         connection: protos.ConnectionT = None,
         coerce: bool = True,
         **kwargs,
-    ):
+    ) -> Iterable:
         if isinstance(query, pypika.queries.QueryBuilder):
             query = query.get_sql()
 
@@ -46,7 +46,7 @@ class DynamicQueryLib:
                 conn=c, query_name="all", sql=query, parameters=args or kwargs
             )
 
-    @support.retry
+    @contextlib.asynccontextmanager
     async def execute_cursor(
         self,
         query: Union[str, pypika.queries.QueryBuilder],
@@ -54,9 +54,7 @@ class DynamicQueryLib:
         connection: protos.ConnectionT = None,
         coerce: bool = True,
         **kwargs,
-    ) -> AsyncContextManager[
-        Union[protos.CursorProtocolT[_MT], protos.CursorProtocolT[_RT]]
-    ]:
+    ) -> AsyncIterator[protos.CursorProtocolT]:
         if isinstance(query, pypika.queries.QueryBuilder):
             query = query.get_sql()
 
@@ -65,7 +63,7 @@ class DynamicQueryLib:
                 conn=c, query_name="all", sql=query, parameters=args or kwargs
             ) as factory:
                 cursor = await factory
-                yield client.CoercingCursor(self, cursor) if coerce else cursor
+                yield client.CoercingCursor(self.service, cursor) if coerce else cursor
 
     def select(
         self,
@@ -73,7 +71,7 @@ class DynamicQueryLib:
         connection: protos.ConnectionT = None,
         coerce: bool = True,
         **where: Any,
-    ) -> Awaitable[Union[Collection[_RT], Collection[_MT]]]:
+    ) -> Awaitable[Iterable]:
         query = self.build_select(*fields, **where)
         return self.execute(query, connection=connection, coerce=coerce)
 
@@ -83,15 +81,13 @@ class DynamicQueryLib:
         connection: protos.ConnectionT = None,
         coerce: bool = True,
         **where: Any,
-    ) -> AsyncContextManager[
-        Union[protos.CursorProtocolT[_MT], protos.CursorProtocolT[_RT]]
-    ]:
+    ) -> AsyncContextManager[protos.CursorProtocolT]:
         query = self.build_select(*fields, **where)
         return self.execute_cursor(query, connection=connection, coerce=coerce)
 
     def build_select(self, *fields: str, **where: Any) -> pypika.queries.QueryBuilder:
-        fields = fields or [self.builder.star]
-        query: pypika.queries.QueryBuilder = self.builder.select(*fields).where(
+        fs: Iterable[str] = fields or [self.builder.star]
+        query: pypika.queries.QueryBuilder = self.builder.select(*fs).where(
             pypika.Criterion.all(
                 [getattr(self.table, c) == v for c, v in where.items()]
             )
