@@ -17,7 +17,6 @@ from typing import (
     AsyncIterator,
     Optional,
     AsyncContextManager,
-    Awaitable,
     Dict,
 )
 
@@ -120,45 +119,33 @@ class ServiceProtocolT(Generic[ModelT]):
         ...
 
 
-class QueryMethodProtocolT(Protocol[ModelT]):
+_ReturnT = TypeVar("_ReturnT", covariant=True)
+
+
+class QueryMethodProtocol(Protocol[ModelT, _ReturnT]):
+    """The generic signature for a query method on a ServiceProtocol."""
+
     __name__: str
     __qualname__: str
-    __module__: str
 
     async def __call__(
         _,
         self: ServiceProtocolT[ModelT],
         *args,
         connection: ConnectionT = None,
-        coerce: bool = True,
         **kwargs,
-    ) -> Optional[RawT]:
+    ) -> _ReturnT:
         ...
 
 
-class QueryMethodBulkProtocolT(Protocol[ModelT]):
-    __name__: str
-    __qualname__: str
-    __module__: str
-
-    async def __call__(
-        _,
-        self: ServiceProtocolT[ModelT],
-        *args,
-        connection: ConnectionT = None,
-        coerce: bool = True,
-        **kwargs,
-    ) -> Iterable[RawT]:
-        ...
+_CursorProtocolReturnT = AsyncContextManager[
+    Union[CursorProtocolT[ModelT], CursorProtocolT[RawT]]
+]
 
 
-class QueryMethodCursorProtocolT(Protocol[ModelT]):
+class CursorMethodProtocolT(QueryMethodProtocol[ModelT, _CursorProtocolReturnT]):
     """The final signature for a query cursor method on a ServiceProtocol."""
 
-    __name__: str
-    __qualname__: str
-    __module__: str
-
     async def __call__(
         _,
         self: ServiceProtocolT[ModelT],
@@ -166,17 +153,46 @@ class QueryMethodCursorProtocolT(Protocol[ModelT]):
         connection: ConnectionT = None,
         coerce: bool = True,
         **kwargs,
-    ) -> AsyncContextManager[Union[CursorProtocolT[ModelT], CursorProtocolT[RawT]]]:
+    ) -> _ReturnT:
         ...
 
 
-class CoerceableProtocolT(Protocol[ModelT]):
-    """The final signature for a query for a query method on a ServiceProtocol"""
+class RawProtocolT(QueryMethodProtocol[ModelT, Optional[RawT]]):
+    """The signature for a scalar query method on a ServiceProtocol."""
 
-    __name__: str
-    __qualname__: str
-    __module__: str
 
+class RawBulkProtocolT(QueryMethodProtocol[ModelT, Iterable[RawT]]):
+    """The signature for a bulk scalar query method on a ServiceProtocol."""
+
+
+class RawPersistProtocolT(QueryMethodProtocol[ModelT, Optional[RawT]]):
+    """The signature for a scalar persistence query method on a ServiceProtocol."""
+
+    async def __call__(
+        *__,
+        model: ModelT = None,
+        connection: ConnectionT = None,
+        **kwargs,
+    ) -> _ReturnT:
+        ...
+
+
+class RawBulkPersistProtocolT(QueryMethodProtocol[ModelT, Optional[Iterable[RawT]]]):
+    """The signature for a bulk, scalar persistence query method on a ServiceProtocol."""
+
+    async def __call__(
+        _,
+        self: ServiceProtocolT[ModelT],
+        *__,
+        connection: ConnectionT = None,
+        models: Iterable[ModelT] = (),
+        data: Iterable[Mapping] = (),
+        **___,
+    ) -> _ReturnT:
+        ...
+
+
+class ModelMethodProtocol(Protocol[_ReturnT], QueryMethodProtocol):
     async def __call__(
         _,
         self: ServiceProtocolT[ModelT],
@@ -184,23 +200,48 @@ class CoerceableProtocolT(Protocol[ModelT]):
         connection: ConnectionT = None,
         coerce: bool = True,
         **kwargs,
-    ) -> Union[ModelT, RawT, None]:
+    ) -> _ReturnT:
         ...
 
 
-class BulkCoerceableProtocolT(Protocol[ModelT]):
+ModelReturnT = Union[ModelT, RawT, None]
+BulkModelReturnT = Union[Iterable[ModelT], Iterable[RawT]]
+
+
+class ModelProtocolT(ModelMethodProtocol[ModelReturnT]):
+    """The final signature a general query method on a ServiceProtocol"""
+
+
+class BulkModelProtocolT(ModelMethodProtocol[BulkModelReturnT]):
     """The final query for a bulk query method on a ServiceProtocol"""
 
-    __name__: str
-    __qualname__: str
-    __module__: str
 
-    def __call__(
+class ModelPersistProtocolT(ModelMethodProtocol[ModelReturnT]):
+    """The final signature for a persistence query method on a ServiceProtocol"""
+
+    async def __call__(
         _,
         self: ServiceProtocolT[ModelT],
-        *args,
+        *__,
         connection: ConnectionT = None,
         coerce: bool = True,
-        **kwargs,
-    ) -> Awaitable[Union[Iterable[ModelT], Iterable[RawT]]]:
+        model: ModelT = None,
+        **data,
+    ) -> _ReturnT:
+        ...
+
+
+class BulkModelPersistProtocolT(ModelMethodProtocol[Optional[BulkModelReturnT]]):
+    """The final signature for a persistence query method on a ServiceProtocol"""
+
+    async def __call__(
+        _,
+        self: ServiceProtocolT[ModelT],
+        *__,
+        connection: ConnectionT = None,
+        coerce: bool = True,
+        data: Iterable[RawT] = (),
+        models: Iterable[ModelT] = (),
+        **___,
+    ) -> _ReturnT:
         ...

@@ -21,22 +21,31 @@ from aiosql.types import QueryFn, SQLOperationType
 from norma import protos, drivers
 
 
-QueryFunctionT = Union[protos.QueryMethodProtocolT, protos.QueryMethodBulkProtocolT]
-CoerceableT = Union[protos.CoerceableProtocolT, protos.BulkCoerceableProtocolT]
-CoerceableWrapperT = Callable[
-    [protos.QueryMethodProtocolT[protos.ModelT]],
-    protos.CoerceableProtocolT[protos.ModelT],
-]
-BulkCoerceableWrapperT = Callable[
-    [protos.QueryMethodBulkProtocolT[protos.ModelT]],
-    protos.BulkCoerceableProtocolT[protos.ModelT],
-]
+CoerceableWrapperT = Callable[[protos.QueryMethodProtocol], protos.ModelMethodProtocol]
+BulkCoerceableWrapperT = Callable[[protos.RawBulkProtocolT], protos.BulkModelProtocolT]
+
+
+@overload
+def coerceable(func: protos.RawProtocolT) -> protos.ModelProtocolT:
+    ...
+
+
+@overload
+def coerceable(func: protos.RawPersistProtocolT) -> protos.ModelPersistProtocolT:
+    ...
 
 
 @overload
 def coerceable(
-    func: protos.QueryMethodProtocolT[protos.ModelT], *, bulk: bool = False
-) -> protos.CoerceableProtocolT[protos.ModelT]:
+    func: protos.RawProtocolT, *, bulk: Literal[False] = False
+) -> protos.ModelProtocolT:
+    ...
+
+
+@overload
+def coerceable(
+    func: protos.RawPersistProtocolT, *, bulk: Literal[False] = False
+) -> protos.ModelPersistProtocolT:
     ...
 
 
@@ -47,8 +56,15 @@ def coerceable(*, bulk: Literal[False] = False) -> CoerceableWrapperT:
 
 @overload
 def coerceable(
-    func: protos.QueryMethodBulkProtocolT[protos.ModelT], *, bulk: Literal[True]
-) -> protos.BulkCoerceableProtocolT[protos.ModelT]:
+    func: protos.RawBulkProtocolT, *, bulk: Literal[True]
+) -> protos.BulkModelProtocolT:
+    ...
+
+
+@overload
+def coerceable(
+    func: protos.RawBulkPersistProtocolT, *, bulk: Literal[True]
+) -> protos.BulkModelPersistProtocolT:
     ...
 
 
@@ -57,17 +73,17 @@ def coerceable(*, bulk: Literal[True]) -> BulkCoerceableWrapperT:
     ...
 
 
-def coerceable(func: QueryFunctionT = None, *, bulk: bool = False):
+def coerceable(func=None, *, bulk=False):
     """A helper which will automatically coerce a protos.RawT to a model."""
     if bulk:
-        bulk_func = cast(Optional[protos.QueryMethodBulkProtocolT], func)
+        bulk_func = cast(Optional[protos.RawBulkProtocolT], func)
         return (
             _maybe_coerce_bulk_result(bulk_func)
             if bulk_func
             else _maybe_coerce_bulk_result
         )
 
-    row_func = cast(Optional[protos.QueryMethodProtocolT], func)
+    row_func = cast(Optional[protos.RawProtocolT], func)
     return _maybe_coerce_result(row_func) if row_func else _maybe_coerce_result
 
 
@@ -120,9 +136,7 @@ def retry(
     return _retry_impl(func) if func else _retry_impl
 
 
-def _maybe_coerce_bulk_result(
-    f: protos.QueryMethodBulkProtocolT[protos.ModelT],
-) -> protos.BulkCoerceableProtocolT[protos.ModelT]:
+def _maybe_coerce_bulk_result(f: protos.RawBulkProtocolT) -> protos.BulkModelProtocolT:
     @functools.wraps(f)
     async def _maybe_coerce_bulk_result_wrapper(
         self: protos.ServiceProtocolT[protos.ModelT],
@@ -132,18 +146,16 @@ def _maybe_coerce_bulk_result(
         **kwargs,
     ) -> Union[Iterable[protos.ModelT], Iterable[protos.RawT]]:
         res: Iterable[protos.RawT] = await f(
-            self, *args, coerce=coerce, connection=connection, **kwargs
+            self, *args, connection=connection, **kwargs
         )
         if res and coerce:
             return self.bulk_protocol.transmute(({**r} for r in res))  # type: ignore
         return res
 
-    return cast(protos.BulkCoerceableProtocolT, _maybe_coerce_bulk_result_wrapper)
+    return cast(protos.BulkModelProtocolT, _maybe_coerce_bulk_result_wrapper)
 
 
-def _maybe_coerce_result(
-    f: protos.QueryMethodProtocolT[protos.ModelT],
-) -> protos.CoerceableProtocolT[protos.ModelT]:
+def _maybe_coerce_result(f: protos.RawProtocolT) -> protos.ModelProtocolT:
     @functools.wraps(f)  # type: ignore
     async def _maybe_coerce_result_wrapper(
         self: protos.ServiceProtocolT[protos.ModelT],
@@ -152,12 +164,12 @@ def _maybe_coerce_result(
         coerce: bool = True,
         **kwargs,
     ) -> Union[protos.ModelT, protos.RawT, None]:
-        res = await f(self, *args, coerce=coerce, connection=connection, **kwargs)
+        res = await f(self, *args, connection=connection, **kwargs)
         if res and coerce:
             return self.protocol.transmute({**res})
         return res
 
-    return cast(protos.CoerceableProtocolT, _maybe_coerce_result_wrapper)
+    return cast(protos.ModelProtocolT, _maybe_coerce_result_wrapper)
 
 
 def get_connector_protocol(
@@ -200,4 +212,4 @@ _SCALAR_QUERIES = {
     SQLOperationType.INSERT_UPDATE_DELETE_MANY,
     SQLOperationType.SCRIPT,
 }
-_BULK_QUERIES = {SQLOperationType.SELECT}
+_BULK_QUERIES = {SQLOperationType.SELECT, SQLOperationType.INSERT_UPDATE_DELETE_MANY}

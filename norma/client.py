@@ -18,6 +18,7 @@ from typing import (
     Generic,
     TypeVar,
     cast,
+    overload,
 )
 
 import aiosql
@@ -204,18 +205,23 @@ class QueryService(Generic[_MT]):
 
 def bootstrap(
     cls: Type[protos.ServiceProtocolT[_MT]], func: QueryFn
-) -> BootstrappedMethodT:
-    scalar = func.__name__ in cls.metadata.__scalar_queries__ or support.isscalar(func)
+) -> protos.QueryMethodProtocol[_MT, protos.RawT]:
+    scalar = cast(
+        Literal[True, False],
+        bool(
+            func.__name__ in cls.metadata.__scalar_queries__ or support.isscalar(func)
+        ),
+    )
     bulk = cast(Literal[True, False], bool(not scalar and support.isbulk(func)))
-    run_query: BootstrappedMethodT
+    run_query: protos.QueryMethodProtocol[_MT, protos.RawT]
     if func.__name__.endswith("_cursor"):
-        run_query = _bootstrap_cursor(func, scalar=scalar)
+        run_query = _bootstrap_cursor(func, scalar=scalar)  # type: ignore
 
     elif support.ispersist(func):
-        run_query = _bootstrap_persist(func, scalar=scalar, bulk=bulk)
+        run_query = _bootstrap_persist(func, scalar=scalar, bulk=bulk)  # type: ignore
 
     else:
-        run_query = _bootstrap_default(func, scalar=scalar, bulk=bulk)
+        run_query = _bootstrap_default(func, scalar=scalar, bulk=bulk)  # type: ignore
 
     run_query.__name__ = func.__name__
     run_query.__doc__ = func.__doc__
@@ -224,12 +230,7 @@ def bootstrap(
     return run_query
 
 
-BootstrappedMethodT = Union[support.QueryFunctionT, support.CoerceableT]
-
-
-def _bootstrap_cursor(
-    func: QueryFn, *, scalar: bool
-) -> protos.QueryMethodCursorProtocolT:
+def _bootstrap_cursor(func: QueryFn, *, scalar: bool) -> protos.CursorMethodProtocolT:
     if scalar:
 
         @contextlib.asynccontextmanager
@@ -244,7 +245,7 @@ def _bootstrap_cursor(
                 async with func(c, *args, **kwargs) as cursor:
                     yield await cursor
 
-        return cast(protos.QueryMethodCursorProtocolT, run_scalar_query_cursor)
+        return cast(protos.CursorMethodProtocolT, run_scalar_query_cursor)
 
     @contextlib.asynccontextmanager
     async def run_query_cursor(
@@ -259,49 +260,128 @@ def _bootstrap_cursor(
                 cursor = await factory
                 yield CoercingCursor(self, cursor) if coerce else cursor
 
-    return cast(protos.QueryMethodCursorProtocolT, run_query_cursor)
+    return cast(protos.CursorMethodProtocolT, run_query_cursor)
+
+
+@overload
+def _bootstrap_persist(
+    func: QueryFn, *, scalar: Literal[False], bulk: Literal[False]
+) -> protos.ModelPersistProtocolT:
+    ...
+
+
+@overload
+def _bootstrap_persist(
+    func: QueryFn, *, scalar: Literal[True], bulk: Literal[False]
+) -> protos.RawPersistProtocolT:
+    ...
+
+
+@overload
+def _bootstrap_persist(
+    func: QueryFn, *, scalar: Literal[True], bulk: Literal[True]
+) -> protos.RawBulkPersistProtocolT:
+    ...
+
+
+@overload
+def _bootstrap_persist(
+    func: QueryFn, *, scalar: Literal[False], bulk: Literal[True]
+) -> protos.BulkModelPersistProtocolT:
+    ...
 
 
 def _bootstrap_persist(
-    func: QueryFn, *, scalar: bool, bulk: Literal[True, False]
-) -> Union[support.QueryFunctionT, support.CoerceableT]:
-    @support.retry
-    async def run_persist_query(
-        self: protos.ServiceProtocolT[protos.ModelT],
-        *,
-        model: protos.ModelT = None,
-        connection: protos.ConnectionT = None,
-        coerce: bool = True,
-        **data,
-    ):
-        if model:
-            data = self.get_kvs(model)
-        async with self.connector.connection(c=connection) as c:
-            return await func(c, **data)
+    func: QueryFn, *, scalar: Literal[True, False], bulk: Literal[True, False]
+):
+    if bulk is True:
 
-    if not scalar:
-        return cast(
-            support.CoerceableT, support.coerceable(run_persist_query, bulk=bulk)
-        )
+        @support.retry
+        async def run_persist_query(
+            self: protos.ServiceProtocolT[protos.ModelT],
+            *__,
+            connection: protos.ConnectionT = None,
+            models: Iterable[protos.ModelT] = (),
+            data: Iterable[Mapping] = (),
+            **___,
+        ):
+            if models:
+                data = (self.get_kvs(m) for m in models)
+            async with self.connector.connection(c=connection) as c:
+                return await func(c, data)
 
-    return cast(support.QueryFunctionT, run_persist_query)
+    else:
+
+        @support.retry
+        async def run_persist_query(
+            self: protos.ServiceProtocolT[protos.ModelT],
+            *__,
+            model: protos.ModelT = None,
+            connection: protos.ConnectionT = None,
+            **kwargs,
+        ):
+            data = kwargs
+            if model:
+                data = self.get_kvs(model)
+            async with self.connector.connection(c=connection) as c:
+                return await func(c, **data)
+
+    if scalar is False:
+        return support.coerceable(run_persist_query, bulk=bulk)
+
+    return run_persist_query
+
+
+@overload
+def _bootstrap_default(
+    func: QueryFn, *, scalar: Literal[False], bulk: Literal[False]
+) -> protos.ModelProtocolT:
+    ...
+
+
+@overload
+def _bootstrap_default(
+    func: QueryFn, *, scalar: Literal[False], bulk: Literal[True]
+) -> protos.BulkModelProtocolT:
+    ...
+
+
+@overload
+def _bootstrap_default(
+    func: QueryFn, *, scalar: Literal[True], bulk: Literal[False]
+) -> protos.RawProtocolT:
+    ...
+
+
+@overload
+def _bootstrap_default(
+    func: QueryFn, *, scalar: Literal[True], bulk: Literal[True]
+) -> protos.RawBulkProtocolT:
+    ...
 
 
 def _bootstrap_default(
-    func: QueryFn, *, scalar: bool, bulk: Literal[True, False]
-) -> Union[support.QueryFunctionT, support.CoerceableT]:
+    func: QueryFn, *, scalar: Literal[True, False], bulk: Literal[True, False]
+):
     @support.retry
     async def run_default_query(
-        self: protos.ServiceProtocolT,
+        self: protos.ServiceProtocolT[protos.ModelT],
         *args,
         connection: protos.ConnectionT = None,
-        coerce: bool = True,
         **kwargs,
     ):
         async with self.connector.connection(c=connection) as c:
             return await func(c, *args, **kwargs)
 
-    if not scalar:
-        cast(support.CoerceableT, support.coerceable(run_default_query, bulk=bulk))
+    if scalar is False:
+        return support.coerceable(run_default_query, bulk=bulk)
 
-    return cast(support.QueryFunctionT, run_default_query)
+    return run_default_query
+
+
+RawDefaultMethodT = Union[
+    protos.RawProtocolT,
+    protos.RawBulkProtocolT,
+    protos.RawPersistProtocolT,
+    protos.RawBulkPersistProtocolT,
+]
