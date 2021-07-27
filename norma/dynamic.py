@@ -19,10 +19,20 @@ _RT = TypeVar("_RT")
 
 
 class DynamicQueryLib:
-    __slots__ = ("service", "table", "builder")
+    __slots__ = (
+        "service",
+        "protocol",
+        "bulk_protocol",
+        "connector",
+        "table",
+        "builder",
+    )
 
     def __init__(self, service: protos.ServiceProtocolT, *, schema: str = None):
         self.service = service
+        self.protocol = self.service.protocol
+        self.bulk_protocol = self.service.bulk_protocol
+        self.connector = self.service.connector
         self.table = self._get_table(service.metadata.__tablename__, schema=schema)
         self.builder = self._get_query_builder(
             self.table, driver=service.metadata.__driver__
