@@ -139,7 +139,7 @@ class QueryService(Generic[_MT]):
         **kwargs,
     ) -> int:
         name = query if isinstance(query, str) else query.__name__
-        queryfn: aiosql.types.QuerFn = getattr(self.queries, name)
+        queryfn: aiosql.types.QueryFn = getattr(self.queries, name)
         sql = f"SELECT count(*) FROM ({queryfn.sql.rstrip(';')}) AS q;"
         async with self.connector.connection(c=connection) as c:
             return await self.queries.driver_adapter.select_value(
@@ -159,7 +159,7 @@ class QueryService(Generic[_MT]):
         **kwargs,
     ) -> Union[protos.RawT, str]:
         name = query if isinstance(query, str) else query.__name__
-        queryfn: aiosql.types.QuerFn = getattr(self.queries, name)
+        queryfn: aiosql.types.QueryFn = getattr(self.queries, name)
         c: protos.ConnectionT
         async with self.connector.transaction(c=connection, rollback=True) as c:
             selector, sql = (
