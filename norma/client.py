@@ -170,6 +170,41 @@ class QueryService(Generic[_MT]):
         format: Optional[ExplainFormatT] = "json",
         **kwargs,
     ) -> Union[protos.RawT, str]:
+        """Get profiling information from the database about your query.
+
+        EXPLAIN is a useful tool to debug how the RDBMS's query optimizer will execute
+        your query in the database so that you can tune either it or the schema for
+        your use-case.
+
+        Notes:
+            We run our EXPLAIN under a transaction which is automatically rolled back,
+            so this operation is considered "safe" to use with queries which would
+            result in mutation.
+
+            The exact command run is determined by the ConnectorProtocol's
+            `get_explain_command`, which will return a compliant command for the
+            selected dialect. Consult your dialect's documentation for more information.
+
+        Args:
+            query:
+                Either the query function, or the name of the query in your library
+                which you wish to analyze.
+            *args:
+                Any positional arguments which the query requires.
+            analyze: defaults True
+                If true and supported by your dialect, run `EXPLAIN ANALYZE`,
+                else run `EXPLAIN`. Consult the documentation for your dialect for an
+                in-depth explanation of the two options.
+            connection: optional
+                A raw DBAPI connection object.
+            format: defaults "json"
+                If supported, the output format for the EXPLAIN result.
+                Consult the documentation for your dialect to get a full list of options.
+            **kwargs:
+                Any keyword-arguments you'll pass on to the query.
+        Returns:
+            The raw results of the EXPLAIN query.
+        """
         name = query if isinstance(query, str) else query.__name__
         queryfn: aiosql.types.QueryFn = getattr(self.queries, name)
         c: protos.ConnectionT
@@ -194,6 +229,7 @@ class QueryService(Generic[_MT]):
 
     @classmethod
     def get_kvs(cls, model: protos.ModelT) -> Mapping:
+        """Get a mapping of key-value pairs for your model without excluded fields."""
         return {
             field: value
             for field, value in cls.protocol.iterate(model)
@@ -202,15 +238,35 @@ class QueryService(Generic[_MT]):
 
     @classmethod
     def _get_table_name(cls) -> str:
+        """Get the name of the table for this query lib
+
+        Overload this method to customize how your determine the table name of your
+        Query library.
+
+        Notes:
+            This is run if Metadata.__tablename__ is not set by the user.
+        """
         return inflection.underscore(cls.model.__name__)
 
     @classmethod
     def _get_query_library(cls):
+        """Load the query library from disk into memory.
+
+        Overload this method to customize how your query library is loaded.
+
+        Notes:
+            By default, this will join `Metadata.__querylib__` &
+            `Metadata.__tablename__` as a path and attempt to load all sql files found.
+        """
         lib = aiosql.from_path(cls.metadata.__querylib__, cls.metadata.__tablename__)
         return lib
 
     @classmethod
     def _bootstrap_user_queries(cls):
+        """Bootstrap all raw Query functions and attach them to this service.
+
+        Overload this method to customize how your queries are bootstrapped.
+        """
         for name in cls.queries.available_queries:
             queryfn: QueryFn = getattr(cls.queries, name)
             bootstrapped = bootstrap(cls, queryfn)
@@ -220,6 +276,22 @@ class QueryService(Generic[_MT]):
 def bootstrap(
     cls: Type[protos.ServiceProtocolT[_MT]], func: QueryFn
 ) -> protos.QueryMethodProtocol[_MT, protos.RawT]:
+    """Given a ServiceProtocol and a Query function, get a "bootstrapped" method.
+
+    This will inspect the query function and create a valid method for a ServiceProtocol.
+
+    Notes:
+        If the method is "scalar" (e.g., no return or returns a primitive value),
+        the method will not attempt to coerce the result into the model bound to your
+        Service.
+
+        If the method is a "bulk" method, the method will assume that multiple records
+        may be returned, and coerce them to the model if it is not also "scalar".
+
+        If the method is a "persist" method (an insert or update) the resulting
+        method will either accept an instance of your model (or models if also "bulk"),
+        or raw keywords (or an iterable of mappings).
+    """
     scalar = cast(
         Literal[True, False],
         bool(
