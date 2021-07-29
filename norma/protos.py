@@ -33,6 +33,7 @@ ConnectionT = TypeVar("ConnectionT")
 @runtime_checkable
 class ConnectorProtocol(Protocol[RawT]):
     TRANSIENT: ClassVar[Tuple[BaseException, ...]]
+    EXPLAIN_PREFIX: str = "EXPLAIN"
     initialized: bool
 
     @property
@@ -56,6 +57,10 @@ class ConnectorProtocol(Protocol[RawT]):
         ...
 
     async def close(self, timeout: int = 10):
+        ...
+
+    @classmethod
+    def get_explain_command(cls, analyze: bool = False, format: str = None) -> str:
         ...
 
 
@@ -83,7 +88,6 @@ class MetadataT(Protocol):
     __slots__ = ()
     __driver__: ClassVar[drivers.SupportedDriversT]
     __tablename__: ClassVar[str]
-    __primary_key__: ClassVar[str]
     __exclude_fields__: ClassVar[FrozenSet[str]]
     __scalar_queries__: ClassVar[FrozenSet[str]]
     __querylib__: ClassVar[Union[str, pathlib.Path]]

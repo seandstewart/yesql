@@ -66,3 +66,7 @@ class AIOSQLiteConnector(protos.ConnectorProtocol[aiosqlite.Row]):
     @property
     def open(self) -> bool:
         return self.initialized
+
+    @classmethod
+    def get_explain_command(cls, analyze: bool = False, format: str = None) -> str:
+        return cls.EXPLAIN_PREFIX

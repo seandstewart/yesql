@@ -74,6 +74,17 @@ class AsyncPGConnector(protos.ConnectorProtocol[asyncpg.Record]):
     def open(self) -> bool:
         return not self.pool._closed
 
+    @classmethod
+    def get_explain_command(cls, analyze: bool = False, format: str = None) -> str:
+        options = (
+            f"{'ANALYZE, ' if analyze else ''}"
+            f"{'FORMAT ' if format else ''}"
+            f"{format or ''}"
+        )
+        if options:
+            return f"{cls.EXPLAIN_PREFIX} ({options})"
+        return cls.EXPLAIN_PREFIX
+
 
 async def _init_connection(connection: asyncpg.Connection):
     await connection.set_type_codec(

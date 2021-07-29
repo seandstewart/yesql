@@ -70,7 +70,6 @@ class CoercingCursor(protos.CursorProtocolT[_MT]):
 class Metadata:
     __slots__ = ()
     __driver__: ClassVar[drivers.SupportedDriversT] = "asyncpg"
-    __primary_key__: ClassVar[str] = "id"
     __exclude_fields__: ClassVar[FrozenSet[str]] = frozenset(
         ("id", "created_at", "updated_at")
     )
@@ -126,10 +125,6 @@ class QueryService(Generic[_MT]):
         cls._bootstrap_user_queries()
         super().__init_subclass__()
 
-    @property
-    def pk(self) -> str:
-        return self.metadata.__primary_key__
-
     @support.retry
     async def count(
         self,
@@ -138,6 +133,22 @@ class QueryService(Generic[_MT]):
         connection: protos.ConnectionT = None,
         **kwargs,
     ) -> int:
+        """Get the number of rows returned by this query.
+
+        Args:
+            query:
+                Either the query function, or the name of the query in your library
+                which you wish to analyze.
+            *args:
+                Any positional arguments which the query requires.
+            connection: optional
+                A raw DBAPI connection object.
+            **kwargs:
+                Any keyword-arguments you'll pass on to the query.
+
+        Returns:
+            The number of rows.
+        """
         name = query if isinstance(query, str) else query.__name__
         queryfn: aiosql.types.QueryFn = getattr(self.queries, name)
         sql = f"SELECT count(*) FROM ({queryfn.sql.rstrip(';')}) AS q;"
@@ -154,6 +165,7 @@ class QueryService(Generic[_MT]):
         self,
         query: Union[str, Callable],
         *args,
+        analyze: bool = True,
         connection: protos.ConnectionT = None,
         format: Optional[ExplainFormatT] = "json",
         **kwargs,
@@ -162,14 +174,16 @@ class QueryService(Generic[_MT]):
         queryfn: aiosql.types.QueryFn = getattr(self.queries, name)
         c: protos.ConnectionT
         async with self.connector.transaction(c=connection, rollback=True) as c:
-            selector, sql = (
-                self.queries.driver_adapter.select_one,
-                f"EXPLAIN ANALYZE {queryfn.sql}",
-            )
-            if format:
+            op = self.connector.get_explain_command(analyze, format)
+            if op == self.connector.EXPLAIN_PREFIX:
+                selector, sql = (
+                    self.queries.driver_adapter.select_one,
+                    f"{op}{queryfn.sql}",
+                )
+            else:
                 selector, sql = (
                     self.queries.driver_adapter.select_value,
-                    f"EXPLAIN (FORMAT {format}) {queryfn.sql}",
+                    f"{op}(FORMAT {format}) {queryfn.sql}",
                 )
             return await selector(
                 c,
