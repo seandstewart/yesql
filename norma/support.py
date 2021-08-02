@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import functools
 import logging
 from typing import (
@@ -14,6 +15,7 @@ from typing import (
     Iterable,
     overload,
     Literal,
+    AsyncContextManager,
 )
 
 from aiosql.types import QueryFn, SQLOperationType
@@ -126,6 +128,58 @@ def retry(
                     await asyncio.sleep(delay)
                     try:
                         return await func_(*args, **kwargs)
+                    except _errors:
+                        _logger.warning("Failed on retry.", retry=tries)
+                _logger.error("Couldn't recover on retries. Re-raising original error.")
+                raise e
+
+        return _retry
+
+    return _retry_impl(func) if func else _retry_impl
+
+
+def retry_cursor(
+    func: Callable[..., AsyncContextManager] = None,
+    /,
+    *errors: Type[BaseException],
+    retries: int = 10,
+    delay: float = 0.1,
+):
+    """Automatically retry a database operation on a transient error.
+
+    Default errors are:
+        - asyncpg.DeadlockDetectedError
+        - asyncpg.TooManyConnectionsError
+        - asyncpg.PostgresConnectionError
+    """
+
+    def _retry_impl(
+        func_: Callable[..., AsyncContextManager],
+        *,
+        _retries=retries,
+        _errors=errors,
+    ):
+        _logger = logging.getLogger(__name__)
+
+        @contextlib.asynccontextmanager
+        @functools.wraps(func_)
+        async def _retry(self: protos.ServiceProtocolT, *args, **kwargs):
+            try:
+                async with func_(self, *args, **kwargs) as cm:
+                    yield cm
+            except (*_errors, *self.connector.TRANSIENT) as e:
+                _logger.info(
+                    "Got a watched error. Entering retry loop.",
+                    error=e.__class__.__name__,
+                    exception=str(e),
+                )
+                tries = 0
+                while tries < _retries:
+                    tries += 1
+                    await asyncio.sleep(delay)
+                    try:
+                        async with func_(self, *args, **kwargs) as cm:
+                            yield cm
                     except _errors:
                         _logger.warning("Failed on retry.", retry=tries)
                 _logger.error("Couldn't recover on retries. Re-raising original error.")

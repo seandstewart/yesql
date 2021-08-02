@@ -322,6 +322,7 @@ def bootstrap(
 def _bootstrap_cursor(func: QueryFn, *, scalar: bool) -> protos.CursorMethodProtocolT:
     if scalar:
 
+        @support.retry_cursor
         @contextlib.asynccontextmanager
         async def run_scalar_query_cursor(
             self: protos.ServiceProtocolT,
@@ -336,6 +337,7 @@ def _bootstrap_cursor(func: QueryFn, *, scalar: bool) -> protos.CursorMethodProt
 
         return cast(protos.CursorMethodProtocolT, run_scalar_query_cursor)
 
+    @support.retry_cursor
     @contextlib.asynccontextmanager
     async def run_query_cursor(
         self: protos.ServiceProtocolT,
