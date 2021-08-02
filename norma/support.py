@@ -190,17 +190,22 @@ _DRIVER_TO_CONNECTOR: Mapping[
 }
 
 
-def isbulk(func: QueryFn):
+def isbulk(func: QueryFn) -> bool:
     """Whether this query function may return multiple records."""
     return func.operation in _BULK_QUERIES
 
 
-def isscalar(func: QueryFn):
+def isscalar(func: QueryFn) -> bool:
     """Whether the return value of this query function is not represented by the model."""
     return func.operation in _SCALAR_QUERIES
 
 
-def ispersist(func: QueryFn):
+def ismutate(func: QueryFn) -> bool:
+    """Whether this function results in a mutation of data."""
+    return func.operation in _MUTATE_QUERIES
+
+
+def ispersist(func: QueryFn) -> bool:
     """Whether this query function represents a creation or update of data."""
     sql = func.sql.lower()
     return "insert" in sql or "update" in sql
@@ -213,3 +218,8 @@ _SCALAR_QUERIES = {
     SQLOperationType.SCRIPT,
 }
 _BULK_QUERIES = {SQLOperationType.SELECT, SQLOperationType.INSERT_UPDATE_DELETE_MANY}
+_MUTATE_QUERIES = {
+    SQLOperationType.INSERT_UPDATE_DELETE,
+    SQLOperationType.INSERT_UPDATE_DELETE_MANY,
+    SQLOperationType.SCRIPT,
+}

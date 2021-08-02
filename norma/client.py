@@ -452,15 +452,29 @@ def _bootstrap_default(
 def _bootstrap_default(
     func: QueryFn, *, scalar: Literal[True, False], bulk: Literal[True, False]
 ):
-    @support.retry
-    async def run_default_query(
-        self: protos.ServiceProtocolT[protos.ModelT],
-        *args,
-        connection: protos.ConnectionT = None,
-        **kwargs,
-    ):
-        async with self.connector.connection(c=connection) as c:
-            return await func(c, *args, **kwargs)
+    if support.ismutate(func):
+
+        @support.retry
+        async def run_default_query(
+            self: protos.ServiceProtocolT[protos.ModelT],
+            *args,
+            connection: protos.ConnectionT = None,
+            **kwargs,
+        ):
+            async with self.connector.transaction(connection=connection) as c:
+                return await func(c, *args, **kwargs)
+
+    else:
+
+        @support.retry
+        async def run_default_query(
+            self: protos.ServiceProtocolT[protos.ModelT],
+            *args,
+            connection: protos.ConnectionT = None,
+            **kwargs,
+        ):
+            async with self.connector.connection(c=connection) as c:
+                return await func(c, *args, **kwargs)
 
     if scalar is False:
         return support.coerceable(run_default_query, bulk=bulk)
