@@ -208,7 +208,9 @@ class QueryService(Generic[_MT]):
         name = query if isinstance(query, str) else query.__name__
         queryfn: aiosql.types.QueryFn = getattr(self.queries, name)
         c: protos.ConnectionT
-        async with self.connector.transaction(c=connection, rollback=True) as c:
+        async with self.connector.transaction(
+            connection=connection, rollback=True
+        ) as c:
             op = self.connector.get_explain_command(analyze, format)
             if op == self.connector.EXPLAIN_PREFIX:
                 selector, sql = (
@@ -218,7 +220,7 @@ class QueryService(Generic[_MT]):
             else:
                 selector, sql = (
                     self.queries.driver_adapter.select_value,
-                    f"{op}(FORMAT {format}) {queryfn.sql}",
+                    f"{op}{queryfn.sql}",
                 )
             return await selector(
                 c,
@@ -394,7 +396,7 @@ def _bootstrap_persist(
         ):
             if models:
                 data = (self.get_kvs(m) for m in models)
-            async with self.connector.connection(c=connection) as c:
+            async with self.connector.transaction(connection=connection) as c:
                 return await func(c, data)
 
     else:
@@ -410,7 +412,7 @@ def _bootstrap_persist(
             data = kwargs
             if model:
                 data.update(self.get_kvs(model))
-            async with self.connector.connection(c=connection) as c:
+            async with self.connector.transaction(connection=connection) as c:
                 return await func(c, **data)
 
     if scalar is False:
