@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import abc
 import contextlib
 import pathlib
@@ -18,12 +20,14 @@ from typing import (
     Optional,
     AsyncContextManager,
     Dict,
+    TYPE_CHECKING,
 )
 
 import aiosql.types
 import typic
 
-from norma import drivers
+if TYPE_CHECKING:
+    from norma import drivers
 
 ModelT = TypeVar("ModelT")
 RawT = TypeVar("RawT", covariant=True, bound=Mapping[str, Any])
@@ -83,8 +87,7 @@ class CursorProtocolT(Protocol[_T]):
         ...
 
 
-@runtime_checkable
-class MetadataT(Protocol):
+class MetadataT:
     __slots__ = ()
     __driver__: ClassVar[drivers.SupportedDriversT]
     __tablename__: ClassVar[str]
@@ -196,7 +199,7 @@ class RawBulkPersistProtocolT(QueryMethodProtocol[ModelT, Optional[Iterable[RawT
         ...
 
 
-class ModelMethodProtocol(Protocol[_ReturnT], QueryMethodProtocol):
+class ModelMethodProtocol(QueryMethodProtocol, Protocol[_ReturnT]):
     async def __call__(
         _,
         self: ServiceProtocolT[ModelT],

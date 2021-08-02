@@ -185,8 +185,8 @@ def get_connector_protocol(
 _DRIVER_TO_CONNECTOR: Mapping[
     drivers.SupportedDriversT, Type[protos.ConnectorProtocol]
 ] = {
-    "asyncpg": drivers.asyncpg.AsyncPGConnector,
-    "aiosqlite": drivers.aiosqlite.AIOSQLiteConnector,
+    "asyncpg": drivers.AsyncPGConnector,
+    "aiosqlite": drivers.AIOSQLiteConnector,
 }
 
 

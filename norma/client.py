@@ -67,7 +67,7 @@ class CoercingCursor(protos.CursorProtocolT[_MT]):
         return row and self.service.protocol({**row})
 
 
-class Metadata:
+class Metadata(protos.MetadataT):
     __slots__ = ()
     __driver__: ClassVar[drivers.SupportedDriversT] = "asyncpg"
     __exclude_fields__: ClassVar[FrozenSet[str]] = frozenset(
@@ -258,7 +258,8 @@ class QueryService(Generic[_MT]):
             By default, this will join `Metadata.__querylib__` &
             `Metadata.__tablename__` as a path and attempt to load all sql files found.
         """
-        lib = aiosql.from_path(cls.metadata.__querylib__, cls.metadata.__tablename__)
+        path = cls.metadata.__querylib__ / cls.metadata.__tablename__
+        lib = aiosql.from_path(path, cls.metadata.__driver__)
         return lib
 
     @classmethod
@@ -408,7 +409,7 @@ def _bootstrap_persist(
         ):
             data = kwargs
             if model:
-                data = self.get_kvs(model)
+                data.update(self.get_kvs(model))
             async with self.connector.connection(c=connection) as c:
                 return await func(c, **data)
 
