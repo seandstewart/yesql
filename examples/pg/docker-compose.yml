@@ -1,0 +1,15 @@
+version:  "3"
+services:
+  blog-db:
+    image: postgres:13
+    container_name: blog-db
+    restart: always
+    ports:
+    - "127.0.0.1:5432:5432"
+    expose:
+    - "5432"
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: "trust"
+
+      POSTGRES_DB: blog
+      POSTGRES_USER: postgres
