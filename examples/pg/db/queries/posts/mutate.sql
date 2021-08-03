@@ -31,6 +31,10 @@ SET
 WHERE id = :id
 RETURNING *;
 
+-- name: delete<!
+-- Delete a post.
+DELETE FROM blog.posts WHERE id = :id RETURNING *;
+
 -- name: publish<!
 -- Set the publication date for a blog post.
 UPDATE blog.posts

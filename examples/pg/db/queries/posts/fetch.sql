@@ -14,6 +14,10 @@ SELECT * FROM blog.posts WHERE tags && :tags::text[];
 -- Get all blog posts.
 SELECT * FROM blog.posts;
 
+-- name: published
+-- Get all blog posts which have been published up to this date.
+SELECT * FROM blog.posts where publication_date <= coalesce(:date, current_date);
+
 -- name: search
 -- Search all blog posts using full-text a generalized word search.
 SELECT * FROM blog.posts

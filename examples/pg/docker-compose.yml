@@ -10,6 +10,19 @@ services:
     - "5432"
     environment:
       POSTGRES_HOST_AUTH_METHOD: "trust"
-
       POSTGRES_DB: blog
       POSTGRES_USER: postgres
+
+  blog-migrations:
+    image: amacneil/dbmate
+    container_name: blog-migrations
+    env_file:
+    - .env
+    volumes:
+    - ./db:/db
+    depends_on: [blog-db]
+    command: [up]
+    network_mode: host
+
+volumes:
+  db:
