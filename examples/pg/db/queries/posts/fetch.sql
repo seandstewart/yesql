@@ -13,3 +13,14 @@ SELECT * FROM blog.posts WHERE tags && :tags::text[];
 -- name: all
 -- Get all blog posts.
 SELECT * FROM blog.posts;
+
+-- name: search
+-- Search all blog posts using full-text a generalized word search.
+SELECT * FROM blog.posts
+WHERE tsv @@ :words;
+
+-- name: search_phrase
+-- Search all blog posts for a particular phrase.
+SELECT *
+FROM blog.posts
+WHERE tsv @@ phraseto_tsquery(:phrase);
