@@ -14,6 +14,8 @@ import pypika
 
 from norma import support, protos, client, drivers
 
+__all__ = ("DynamicQueryLib",)
+
 _MT = TypeVar("_MT")
 _RT = TypeVar("_RT")
 

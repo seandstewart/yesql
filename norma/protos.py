@@ -252,3 +252,24 @@ class BulkModelPersistProtocolT(ModelMethodProtocol[Optional[BulkModelReturnT]])
         **___,
     ) -> _ReturnT:
         ...
+
+
+_ReturnT_in = TypeVar("_ReturnT_in")
+
+
+class MiddelwareMethodProtocol(Protocol[ModelT, _ReturnT_in]):
+    """The final signature for a "finalizer" method.
+
+    Finalizer methods are an escape-hatch which allows for manual manipulation or
+    augmentation of the return value of the assigned `__method__`.
+    """
+
+    async def __call__(
+        _,
+        self: ServiceProtocolT[ModelT],
+        method: QueryMethodProtocol[ModelT, _ReturnT_in],
+        *args,
+        connection: ConnectionT = None,
+        **kwargs,
+    ) -> _ReturnT_in:
+        ...

@@ -6,7 +6,6 @@ import asyncpg
 import orjson
 import typic
 
-
 from norma import protos
 
 

@@ -28,6 +28,12 @@ from aiosql.types import QueryFn
 
 from norma import protos, support, drivers
 
+__all__ = (
+    "CoercingCursor",
+    "QueryMetadata",
+    "QueryService",
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -67,7 +73,7 @@ class CoercingCursor(protos.CursorProtocolT[_MT]):
         return row and self.service.protocol({**row})
 
 
-class Metadata(protos.MetadataT):
+class QueryMetadata(protos.MetadataT):
     __slots__ = ()
     __driver__: ClassVar[drivers.SupportedDriversT] = "asyncpg"
     __exclude_fields__: ClassVar[FrozenSet[str]] = frozenset(
@@ -88,7 +94,7 @@ class QueryService(Generic[_MT]):
 
     # User-defined class attributes
     model: ClassVar[Type[_MT]] = Any  # type: ignore
-    metadata: ClassVar[Type[protos.MetadataT]] = Metadata  # type: ignore
+    metadata: ClassVar[Type[protos.MetadataT]] = QueryMetadata  # type: ignore
     # Generated attributes
     protocol: ClassVar[typic.SerdeProtocol[_MT]]
     bulk_protocol: ClassVar[typic.SerdeProtocol[Iterable[_MT]]]
@@ -303,7 +309,8 @@ def bootstrap(
     )
     bulk = cast(Literal[True, False], bool(not scalar and support.isbulk(func)))
     run_query: protos.QueryMethodProtocol[_MT, protos.RawT]
-    if func.__name__.endswith("_cursor"):
+    iscursor = func.__name__.endswith("_cursor")
+    if iscursor:
         run_query = _bootstrap_cursor(func, scalar=scalar)  # type: ignore
 
     elif support.ispersist(func):
