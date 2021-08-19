@@ -1,12 +1,37 @@
+from __future__ import annotations
+
 import asyncio
 import contextlib
-from typing import AsyncIterator
+import contextvars
+from typing import AsyncIterator, Optional
 
 import asyncpg
 import orjson
 import typic
 
 from norma import protos
+
+LOCK: contextvars.ContextVar[Optional[asyncio.Lock]] = contextvars.ContextVar(
+    "pg_lock", default=None
+)
+CONNECTOR: contextvars.ContextVar[Optional[AsyncPGConnector]] = contextvars.ContextVar(
+    "pg_connector", default=None
+)
+
+
+async def connnector(**pool_kwargs) -> AsyncPGConnector:
+    """A high-level connector factory which uses context-local state."""
+    async with _lock():
+        if (connector := CONNECTOR.get()) is None:
+            connector = AsyncPGConnector(**pool_kwargs)
+            CONNECTOR.set(connector)
+        await connector.initialize()
+        return connector
+
+
+async def teardown():
+    if (connector := CONNECTOR.get()) is not None:
+        await connector.close()
 
 
 class AsyncPGConnector(protos.ConnectorProtocol[asyncpg.Record]):
@@ -19,27 +44,26 @@ class AsyncPGConnector(protos.ConnectorProtocol[asyncpg.Record]):
     )
 
     __slots__ = (
-        "dsn",
         "pool",
         "initialized",
-        "_lock",
+        "pool_kwargs",
     )
 
-    def __init__(self, dsn: str, *, pool: asyncpg.pool.Pool = None, **connect_kwargs):
-        self.dsn = dsn
-        self.pool: asyncpg.pool.Pool = pool or create_pool(dsn, **connect_kwargs)
+    def __init__(self, *, pool: asyncpg.Pool = None, **pool_kwargs):
+        self.pool: asyncpg.Pool = pool or create_pool(**pool_kwargs)
         self.initialized = False
-        self._lock = asyncio.Lock()
+        self.pool_kwargs = pool_kwargs
 
     def __repr__(self):
-        dsn, initialized, open = self.dsn, self.initialized, self.open
-        return f"<{self.__class__.__name__} {dsn=} {initialized=} {open=}>"
+        initialized, open = self.initialized, self.open
+        return f"<{self.__class__.__name__} {initialized=} {open=}>"
 
     async def initialize(self):
-        async with self._lock:
-            if not self.initialized:
-                await self.pool
-                self.initialized = True
+        if self.initialized:
+            return
+        async with _lock():
+            await self.pool
+            self.initialized = True
 
     @contextlib.asynccontextmanager
     async def connection(
@@ -67,7 +91,9 @@ class AsyncPGConnector(protos.ConnectorProtocol[asyncpg.Record]):
                     yield conn
 
     async def close(self, timeout: int = 10):
-        await asyncio.wait_for(self.pool.close(), timeout=timeout)
+        if self.open:
+            async with _lock():
+                await asyncio.wait_for(self.pool.close(), timeout=timeout)
 
     @property
     def open(self) -> bool:
@@ -84,23 +110,63 @@ class AsyncPGConnector(protos.ConnectorProtocol[asyncpg.Record]):
             return f"{cls.EXPLAIN_PREFIX} ({options})"
         return cls.EXPLAIN_PREFIX
 
+    @staticmethod
+    async def _init_connection(connection: asyncpg.Connection):
+        await connection.set_type_codec(
+            "jsonb",
+            # orjson encodes to binary, but libpq (the c bindings for postgres)
+            # can't write binary data to JSONB columns.
+            # https://github.com/lib/pq/issues/528
+            # This is still orders of magnitude faster than any other lib.
+            encoder=lambda o: orjson.dumps(o, default=typic.primitive).decode("utf8"),
+            decoder=orjson.loads,
+            schema="pg_catalog",
+        )
 
-async def _init_connection(connection: asyncpg.Connection):
-    await connection.set_type_codec(
-        "jsonb",
-        # orjson encodes to binary, but libpq (the c bindings for postgres)
-        # can't write binary data to JSONB columns.
-        # https://github.com/lib/pq/issues/528
-        # This is still orders of magnitude faster than any other lib.
-        encoder=lambda o: orjson.dumps(o, default=typic.primitive).decode("utf8"),
-        decoder=orjson.loads,
-        schema="pg_catalog",
-    )
+
+def _lock() -> asyncio.Lock:
+    if (lock := LOCK.get()) is None:
+        lock = asyncio.Lock()
+        LOCK.set(lock)
+    return lock
 
 
-def create_pool(
-    dsn: str, *, loop: asyncio.AbstractEventLoop = None, **kwargs
-) -> protos.ConnectorProtocol[asyncpg.Record]:
-    kwargs.setdefault("init", _init_connection)
-    kwargs.setdefault("loop", loop)
-    return asyncpg.create_pool(dsn, **kwargs)
+@typic.settings(prefix="POSTGRES_POOL_", aliases={"database_url": "postgres_pool_dsn"})
+class AsyncPGPoolSettings:
+    """Settings to pass into the asyncpg pool constructor."""
+
+    dsn: Optional[typic.DSN] = None
+    min_size: Optional[int] = None
+    max_size: Optional[int] = None
+    max_queries: Optional[int] = None
+    max_inactive_connection_lifetime: Optional[float] = None
+
+
+@typic.settings(
+    prefix="POSTGRES_CONNECTION_", aliases={"database_url": "postgres_connection_dsn"}
+)
+class AsyncPGConnectionSettings:
+    """Settings to pass into the asyncpg connection constructor."""
+
+    dsn: Optional[typic.DSN] = None
+    host: Optional[str] = None
+    port: Optional[str] = None
+    user: Optional[str] = None
+    password: Optional[typic.SecretStr] = None
+    passfile: Optional[typic.SecretStr] = None
+    database: Optional[str] = None
+    timeout: Optional[float] = None
+    statement_cache_size: Optional[int] = None
+    max_cached_statement_lifetime: Optional[int] = None
+    max_cacheable_statement_size: Optional[int] = None
+    command_timeout: Optional[float] = None
+    ssl: Optional[str] = None
+
+
+def create_pool(**overrides) -> asyncpg.Pool:
+    pool_settings = AsyncPGPoolSettings()
+    connect_settings = AsyncPGConnectionSettings()
+    kwargs = dict((k, v) for k, v in connect_settings if v is not None)  # type: ignore
+    kwargs.update((k, v) for k, v in pool_settings if v is not None)  # type: ignore
+    kwargs.update(overrides)
+    return asyncpg.create_pool(**kwargs)

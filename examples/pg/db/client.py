@@ -1,8 +1,6 @@
 import pathlib
 
-import typic
 import norma
-from norma import drivers
 
 from .model import Post
 
@@ -15,18 +13,6 @@ class PostsMetadata(norma.QueryMetadata):
     __exclude_fields__ = frozenset(("slug",))
 
 
-class Posts(norma.QueryService):
+class Posts(norma.QueryService[Post]):
     metadata = PostsMetadata
     model = Post
-
-    def __init__(
-        self,
-        dsn: str = None,
-        /,
-        *,
-        connector: drivers.AsyncPGConnector = None,
-        **connect_kwargs,
-    ):
-        dsn = dsn or typic.environ.str("DATABASE_URL")
-        connector = connector or drivers.AsyncPGConnector(dsn, **connect_kwargs)
-        super().__init__(connector=connector, **connect_kwargs)
