@@ -102,6 +102,8 @@ class QueryService(Generic[_MT]):
 
     __slots__ = ("connector",)
 
+    __getattr__: Callable[..., protos.QueryMethodProtocol[_MT, _MT]]
+
     def __init__(
         self,
         *,
@@ -323,6 +325,7 @@ def bootstrap(
     run_query.__doc__ = func.__doc__
     run_query.__qualname__ = f"{cls.__name__}.{func.__name__}"
     run_query.__module__ = cls.__module__
+    run_query.__queryfn__ = func
     return run_query
 
 
