@@ -34,7 +34,7 @@ async def teardown():
         await connector.close()
 
 
-class AsyncPGConnector(protos.ConnectorProtocol[asyncpg.Record]):
+class AsyncPGConnector(protos.ConnectorProtocol[asyncpg.Connection, asyncpg.Record]):
     """A simple connector for asyncpg."""
 
     TRANSIENT = (
@@ -166,7 +166,7 @@ class AsyncPGConnectionSettings:
 def create_pool(**overrides) -> asyncpg.Pool:
     pool_settings = AsyncPGPoolSettings()
     connect_settings = AsyncPGConnectionSettings()
-    kwargs = dict((k, v) for k, v in connect_settings if v is not None)  # type: ignore
-    kwargs.update((k, v) for k, v in pool_settings if v is not None)  # type: ignore
+    kwargs = dict((k, v) for k, v in connect_settings if v is not None)
+    kwargs.update((k, v) for k, v in pool_settings if v is not None)
     kwargs.update(overrides)
     return asyncpg.create_pool(**kwargs)
