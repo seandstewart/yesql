@@ -8,6 +8,7 @@ from typing import (
     Mapping,
     AsyncIterator,
     Iterable,
+    Generic,
 )
 
 import pypika
@@ -20,14 +21,14 @@ _MT = TypeVar("_MT")
 _RT = TypeVar("_RT")
 
 
-class DynamicQueryLib:
+class DynamicQueryLib(Generic[protos.ModelT]):
     """Query Library for building ad-hoc queries in-memory.
 
     This service acts as glue between the `pypika` query-builder library and Norma's
     `QueryService`.
 
     It is intended as an escape-hatch for the small subset of situations where
-    dynamically-built queries are  actually needed (think an admin tool, like
+    dynamically-built queries are actually needed (think an admin tool, like
     Flask-Admin, for instance).
     """
 
@@ -40,7 +41,9 @@ class DynamicQueryLib:
         "builder",
     )
 
-    def __init__(self, service: protos.ServiceProtocolT, *, schema: str = None):
+    def __init__(
+        self, service: protos.ServiceProtocolT[protos.ModelT], *, schema: str = None
+    ):
         self.service = service
         self.protocol = self.service.protocol
         self.bulk_protocol = self.service.bulk_protocol
@@ -58,7 +61,7 @@ class DynamicQueryLib:
         *args,
         connection: protos.ConnectionT = None,
         **kwargs,
-    ) -> Iterable:
+    ) -> Iterable[protos.ModelReturnT]:
         """Execute any arbitrary query and return the result.
 
         Notes:
@@ -97,7 +100,7 @@ class DynamicQueryLib:
         connection: protos.ConnectionT = None,
         coerce: bool = True,
         **kwargs,
-    ) -> AsyncIterator[protos.CursorProtocolT]:
+    ) -> AsyncIterator[protos.CursorProtocolT[protos.ModelReturnT]]:
         """Execute any arbitrary query and enter a cursor context.
 
         Args:
@@ -128,7 +131,7 @@ class DynamicQueryLib:
         connection: protos.ConnectionT = None,
         coerce: bool = True,
         **where: Any,
-    ) -> Awaitable[Iterable]:
+    ) -> Awaitable[Iterable[protos.ModelReturnT]]:
         """A convenience method for executing an arbitrary SELECT query.
 
         Notes:
@@ -155,7 +158,7 @@ class DynamicQueryLib:
         connection: protos.ConnectionT = None,
         coerce: bool = True,
         **where: Any,
-    ) -> AsyncContextManager[protos.CursorProtocolT]:
+    ) -> AsyncContextManager[protos.CursorProtocolT[protos.ModelReturnT]]:
         """A convenience method for executing an arbitrary SELECT query and entering a cursor context.
 
         Notes:

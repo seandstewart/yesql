@@ -318,12 +318,14 @@ def get_connector_protocol(
     return _DRIVER_TO_CONNECTOR[driver](**connect_kwargs)  # type: ignore
 
 
-_DRIVER_TO_CONNECTOR: Mapping[
-    drivers.SupportedDriversT, Type[protos.ConnectorProtocol]
-] = {
+_DRIVER_TO_CONNECTOR: _DriverConnectorMappingT = {
     "asyncpg": drivers.AsyncPGConnector,
     "aiosqlite": drivers.AIOSQLiteConnector,
 }
+
+_DriverConnectorMappingT = Mapping[
+    drivers.SupportedDriversT, Type[protos.ConnectorProtocol]
+]
 
 
 def isbulk(func: QueryFn) -> bool:

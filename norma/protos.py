@@ -30,13 +30,13 @@ if TYPE_CHECKING:
     from norma import drivers
 
 ModelT = TypeVar("ModelT")
-RawT = TypeVar("RawT", covariant=True, bound=Mapping[str, Any])
-ConnectionT = TypeVar("ConnectionT")
+RawT = TypeVar("RawT", covariant=True)
+ConnectionT = TypeVar("ConnectionT", covariant=True)
 
 
 @runtime_checkable
-class ConnectorProtocol(Protocol[RawT]):
-    TRANSIENT: ClassVar[Tuple[BaseException, ...]]
+class ConnectorProtocol(Protocol[ConnectionT, RawT]):
+    TRANSIENT: ClassVar[Tuple[Type[BaseException], ...]]
     EXPLAIN_PREFIX: str = "EXPLAIN"
     initialized: bool
 
