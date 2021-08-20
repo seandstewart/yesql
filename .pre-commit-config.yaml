@@ -5,7 +5,7 @@ repos:
       - id: mypy
         exclude: '.*tests/.*|.*docs/.*'
         args: []
-        additional_dependencies: [types-orjson]
+        additional_dependencies: [types-orjson, typical]
   - repo: https://github.com/ambv/black
     rev: 21.7b0
     hooks:
