@@ -8,7 +8,7 @@ from typing import AsyncIterator, Optional
 import aiosqlite
 import typic
 
-from norma import protos
+from norma import types
 
 LOCK: contextvars.ContextVar[Optional[asyncio.Lock]] = contextvars.ContextVar(
     "sqlite_lock", default=None
@@ -33,7 +33,7 @@ async def teardown():
         await connector.close()
 
 
-class AIOSQLiteConnector(protos.ConnectorProtocol[aiosqlite.Connection, aiosqlite.Row]):
+class AIOSQLiteConnector(types.AsyncConnectorProtocolT[aiosqlite.Connection]):
     """A ConnectorProtocol interface for aiosqlite."""
 
     TRANSIENT = (aiosqlite.OperationalError,)

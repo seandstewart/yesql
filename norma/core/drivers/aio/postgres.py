@@ -6,10 +6,11 @@ import contextvars
 from typing import AsyncIterator, Optional
 
 import asyncpg
+import asyncpg.transaction
 import orjson
 import typic
 
-from norma import protos
+from norma.core import types
 
 LOCK: contextvars.ContextVar[Optional[asyncio.Lock]] = contextvars.ContextVar(
     "pg_lock", default=None
@@ -18,23 +19,31 @@ CONNECTOR: contextvars.ContextVar[Optional[AsyncPGConnector]] = contextvars.Cont
     "pg_connector", default=None
 )
 
+__all__ = (
+    "AsyncPGConnector",
+    "AsyncPGConnectionSettings",
+    "AsyncPGPoolSettings",
+    "connector",
+    "teardown",
+)
 
-async def connnector(**pool_kwargs) -> AsyncPGConnector:
+
+async def connector(**pool_kwargs) -> AsyncPGConnector:
     """A high-level connector factory which uses context-local state."""
     async with _lock():
-        if (connector := CONNECTOR.get()) is None:
-            connector = AsyncPGConnector(**pool_kwargs)
-            CONNECTOR.set(connector)
-        await connector.initialize()
-        return connector
+        if (conn := CONNECTOR.get()) is None:
+            conn = AsyncPGConnector(**pool_kwargs)
+            CONNECTOR.set(conn)
+    await conn.initialize()
+    return conn
 
 
 async def teardown():
-    if (connector := CONNECTOR.get()) is not None:
-        await connector.close()
+    if (conn := CONNECTOR.get()) is not None:
+        await conn.close()
 
 
-class AsyncPGConnector(protos.ConnectorProtocol[asyncpg.Connection, asyncpg.Record]):
+class AsyncPGConnector(types.AsyncConnectorProtocolT[asyncpg.Connection]):
     """A simple connector for asyncpg."""
 
     TRANSIENT = (
@@ -82,7 +91,7 @@ class AsyncPGConnector(protos.ConnectorProtocol[asyncpg.Connection, asyncpg.Reco
     ) -> AsyncIterator[asyncpg.Connection]:
         async with self.connection(c=connection) as conn:
             if rollback:
-                t: asyncpg.Transaction = conn.transaction()
+                t: asyncpg.transaction.Transaction = conn.transaction()
                 await t.start()
                 yield conn
                 await t.rollback()
@@ -166,7 +175,7 @@ class AsyncPGConnectionSettings:
 def create_pool(**overrides) -> asyncpg.Pool:
     pool_settings = AsyncPGPoolSettings()
     connect_settings = AsyncPGConnectionSettings()
-    kwargs = dict((k, v) for k, v in connect_settings if v is not None)
+    kwargs = {k: v for k, v in connect_settings if v is not None}
     kwargs.update((k, v) for k, v in pool_settings if v is not None)
     kwargs.update(overrides)
     return asyncpg.create_pool(**kwargs)
