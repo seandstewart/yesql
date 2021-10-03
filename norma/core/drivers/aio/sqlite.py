@@ -18,7 +18,7 @@ CONNECTOR: contextvars.ContextVar[
 ] = contextvars.ContextVar("sqlite_connector", default=None)
 
 
-async def connnector(**options) -> AIOSQLiteConnector:
+async def connector(**options) -> AIOSQLiteConnector:
     """A high-level connector factory which uses context-local state."""
     async with _lock():
         if (connector := CONNECTOR.get()) is None:

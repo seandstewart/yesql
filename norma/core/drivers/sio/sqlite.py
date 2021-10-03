@@ -18,7 +18,7 @@ CONNECTOR: contextvars.ContextVar[Optional[SQLiteConnector]] = contextvars.Conte
 )
 
 
-def connnector(**options) -> SQLiteConnector:
+def connector(**options) -> SQLiteConnector:
     """A high-level connector factory which uses context-local state."""
     with _lock():
         if (connector := CONNECTOR.get()) is None:
