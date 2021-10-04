@@ -7,11 +7,12 @@ from typing import Optional, Iterator
 
 import psycopg
 import psycopg_pool as pgpool
+import psycopg.types.array as pgarray
 import psycopg.types.json as pgjson
-import orjson
+import psycopg.rows as pgrows
 import typic
 
-from norma import types
+from norma.core import types, support
 
 LOCK: contextvars.ContextVar[Optional[threading.Lock]] = contextvars.ContextVar(
     "pg_lock", default=None
@@ -19,9 +20,6 @@ LOCK: contextvars.ContextVar[Optional[threading.Lock]] = contextvars.ContextVar(
 CONNECTOR: contextvars.ContextVar[Optional[PsycoPGConnector]] = contextvars.ContextVar(
     "pg_connector", default=None
 )
-
-pgjson.set_json_dumps(lambda o: orjson.dumps(o, default=typic.primitive).decode("utf8"))
-pgjson.set_json_loads(orjson.loads)
 
 
 def connector(**pool_kwargs) -> PsycoPGConnector:
@@ -69,6 +67,7 @@ class PsycoPGConnector(types.SyncConnectorProtocolT[psycopg.Connection]):
             return
         with _lock():
             self.pool = create_pool(**self.pool_kwargs)
+            self.pool.kwargs.setdefault("row_factory", pgrows.dict_row)
             self.initialized = True
 
     @contextlib.contextmanager
@@ -130,8 +129,8 @@ class PsycoPGPoolSettings:
     """Settings to pass into the asyncpg pool constructor."""
 
     dsn: Optional[typic.DSN] = None
-    min_conn: int = 0
-    max_conn: int = 10
+    min_size: int = 0
+    max_size: int = 10
     name: Optional[str] = None
     timeout: int = 0
     max_lifetime: float = 60 * 60.0
@@ -163,7 +162,31 @@ class PsycoPGConnectionSettings:
 def create_pool(**overrides) -> pgpool.ConnectionPool:
     pool_settings = PsycoPGPoolSettings()
     connect_settings = PsycoPGConnectionSettings()
-    kwargs = {k: v for k, v in connect_settings if v is not None}
-    kwargs.update((k, v) for k, v in pool_settings if v is not None)
-    kwargs.update(overrides)
-    return pgpool.ConnectionPool(**kwargs)
+    pool_fields = {k for k in pool_settings}
+    conn_fields = {k for k in connect_settings}
+    pool_kwargs = {k: v for k, v in pool_settings if v is not None}
+    pool_kwargs.update(((k, v) for k, v in overrides.items() if k in pool_fields))
+    connect_kwargs = {
+        k: v for k, v in connect_settings if v is not None and k not in pool_kwargs
+    }
+    connect_kwargs.update(((k, v) for k, v in overrides.items() if k in conn_fields))
+    if "dsn" in pool_kwargs:
+        pool_kwargs["conninfo"] = pool_kwargs.pop("dsn")
+    if "dsn" in connect_kwargs:
+        dsn = connect_kwargs.pop("dsn")
+        if "conninfo" not in pool_kwargs:
+            connect_kwargs["conninfo"] = dsn
+    pool_kwargs["kwargs"] = connect_kwargs
+    return pgpool.ConnectionPool(**pool_kwargs)
+
+
+def _init_psycopg():
+    # Use a faster loader for JSON serdes
+    pgjson.set_json_dumps(support.dumps)
+    pgjson.set_json_loads(support.loads)
+    # Register `set()` type as an array type.
+    psycopg.adapters.register_dumper(set, pgarray.ListBinaryDumper)
+    psycopg.adapters.register_dumper(set, pgarray.ListDumper)
+
+
+_init_psycopg()  # naughty naughty...

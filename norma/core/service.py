@@ -72,7 +72,6 @@ class BaseQueryService(
     queries: ClassVar[aiosql.aiosql.Queries]
 
     __slots__ = ("connector",)
-    __abstract__ = False
 
     __getattr__: Callable[..., types.QueryMethodProtocolT[_MT]]
 
@@ -147,7 +146,10 @@ class BaseQueryService(
         if not hasattr(cls.metadata, "__querylib__"):
             cls.metadata.__querylib__ = pathlib.Path.cwd().resolve()
         path = cls.metadata.__querylib__ / cls.metadata.__tablename__
-        lib = aiosql.from_path(path, cls.metadata.__driver__)
+        driver = cls.metadata.__driver__
+        if driver == "psycopg":
+            driver = "psycopg2"
+        lib = aiosql.from_path(path, driver)
         return lib
 
     @classmethod
@@ -166,8 +168,6 @@ class AsyncQueryService(BaseQueryService[_MT, types.ConnectionT]):
     """An event-loop compatible query service (async/await)."""
 
     connector: types.AsyncConnectorProtocolT[types.ConnectionT]
-
-    __abstract__ = True
 
     async def __aenter__(self):
         await self.connector.initialize()
