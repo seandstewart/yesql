@@ -1,27 +1,25 @@
 import pathlib
 
 import norma
-import asyncpg
-import psycopg
 
 from .model import Post
 
 QUERIES = pathlib.Path(__file__).resolve().parent / "queries"
 
 
-class AsyncPosts(norma.service.AsyncQueryService[Post, asyncpg.Connection]):
+class AsyncPosts(norma.AsyncQueryService[Post]):
     """An asyncio-native service for querying blog posts."""
 
-    class metadata(norma.service.QueryMetadata):
+    class metadata(norma.QueryMetadata):
         __querylib__ = QUERIES
         __tablename__ = "posts"
         __exclude_fields__ = frozenset(("slug",))
 
 
-class SyncPosts(norma.service.SyncQueryService[Post, psycopg.Connection]):
-    """A sync-io service for querying blog posts."""
-
-    class metadata(norma.service.SyncQueryService.metadata):
-        __querylib__ = QUERIES
-        __tablename__ = "posts"
-        __exclude_fields__ = frozenset(("slug",))
+SyncPosts = norma.servicemaker(
+    model=Post,
+    querylib=QUERIES,
+    tablename="posts",
+    driver="psycopg",
+    exclude_fields=frozenset(("slug",)),
+)
