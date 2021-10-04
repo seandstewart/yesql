@@ -35,6 +35,8 @@ __all__ = (
     "get_connector_protocol",
     "retry",
     "retry_cursor",
+    "dumps",
+    "loads",
 )
 
 _T = TypeVar("_T")
