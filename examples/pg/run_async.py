@@ -2,7 +2,7 @@ from db import client, model
 
 
 async def run():
-    posts = client.Posts()
+    posts = client.AsyncPosts()
     post = model.Post(
         title="My Great Blog Post",
         subtitle="It's super great. Trust me...",
