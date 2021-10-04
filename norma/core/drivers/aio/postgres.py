@@ -7,10 +7,9 @@ from typing import AsyncIterator, Optional
 
 import asyncpg
 import asyncpg.transaction
-import orjson
 import typic
 
-from norma.core import types
+from norma.core import types, support
 
 LOCK: contextvars.ContextVar[Optional[asyncio.Lock]] = contextvars.ContextVar(
     "pg_lock", default=None
@@ -119,19 +118,6 @@ class AsyncPGConnector(types.AsyncConnectorProtocolT[asyncpg.Connection]):
             return f"{cls.EXPLAIN_PREFIX} ({options})"
         return cls.EXPLAIN_PREFIX
 
-    @staticmethod
-    async def _init_connection(connection: asyncpg.Connection):
-        await connection.set_type_codec(
-            "jsonb",
-            # orjson encodes to binary, but libpq (the c bindings for postgres)
-            # can't write binary data to JSONB columns.
-            # https://github.com/lib/pq/issues/528
-            # This is still orders of magnitude faster than any other lib.
-            encoder=lambda o: orjson.dumps(o, default=typic.primitive).decode("utf8"),
-            decoder=orjson.loads,
-            schema="pg_catalog",
-        )
-
 
 def _lock() -> asyncio.Lock:
     if (lock := LOCK.get()) is None:
@@ -178,4 +164,20 @@ def create_pool(**overrides) -> asyncpg.Pool:
     kwargs = {k: v for k, v in connect_settings if v is not None}
     kwargs.update((k, v) for k, v in pool_settings if v is not None)
     kwargs.update(overrides)
+    kwargs.setdefault("init", _init_connection)
     return asyncpg.create_pool(**kwargs)
+
+
+async def _init_connection(connection: asyncpg.Connection):
+    await connection.set_type_codec(
+        "jsonb",
+        encoder=support.dumps,
+        decoder=support.loads,
+        schema="pg_catalog",
+    )
+    await connection.set_type_codec(
+        "json",
+        encoder=support.dumps,
+        decoder=support.loads,
+        schema="pg_catalog",
+    )
