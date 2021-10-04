@@ -60,8 +60,8 @@ NORMA takes a SQL-first approach to data managment:
   - [x] Async PostgreSQL (via asyncpg)
   - [x] Async SQLite (via aiosqlite)
   - [ ] Async MySQL
-  - [ ] Sync PostgreSQL
-  - [ ] Sync SQLite
+  - [x] Sync PostgreSQL
+  - [x] Sync SQLite
   - [ ] Sync MySQL
 
 ## License
