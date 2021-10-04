@@ -20,11 +20,10 @@ from aiosql.types import QueryFn
 from . import support, types, inspection
 
 _MT = TypeVar("_MT")
-_CT = TypeVar("_CT", bound=types.ConnectorProtocol)
 
 
 def bootstrap(
-    cls: Type[types.ServiceProtocolT[_MT, _CT]], func: QueryFn
+    cls: Type[types.ServiceProtocolT[_MT]], func: QueryFn
 ) -> types.QueryMethodProtocolT[_MT]:
     """Given a ServiceProtocol and a Query function, get a "bootstrapped" method.
 
@@ -77,7 +76,7 @@ def _bootstrap_cursor(func: QueryFn, *, scalar: bool) -> types.CursorMethodProto
         @support.retry_cursor
         @contextlib.asynccontextmanager
         async def run_scalar_query_cursor(
-            self: types.ServiceProtocolT,
+            self: types.AsyncServiceProtocolT,
             *args,
             connection: types.ConnectionT = None,
             coerce: bool = False,
@@ -94,7 +93,7 @@ def _bootstrap_cursor(func: QueryFn, *, scalar: bool) -> types.CursorMethodProto
         @support.retry_cursor
         @contextlib.contextmanager
         def run_scalar_query_cursor(
-            self: types.ServiceProtocolT,
+            self: types.SyncServiceProtocolT,
             *args,
             connection: types.ConnectionT = None,
             coerce: bool = False,
@@ -111,7 +110,7 @@ def _bootstrap_cursor(func: QueryFn, *, scalar: bool) -> types.CursorMethodProto
         @support.retry_cursor
         @contextlib.asynccontextmanager
         async def run_query_cursor(
-            self: types.ServiceProtocolT,
+            self: types.AsyncServiceProtocolT,
             *args,
             connection: types.ConnectionT = None,
             coerce: bool = True,
@@ -129,7 +128,7 @@ def _bootstrap_cursor(func: QueryFn, *, scalar: bool) -> types.CursorMethodProto
         @support.retry_cursor
         @contextlib.contextmanager
         def run_query_cursor(
-            self: types.ServiceProtocolT,
+            self: types.SyncServiceProtocolT,
             *args,
             connection: types.ConnectionT = None,
             coerce: bool = True,
@@ -178,7 +177,7 @@ def _bootstrap_persist(
 
         @support.retry
         async def run_persist_query(
-            self: types.ServiceProtocolT,
+            self: types.AsyncServiceProtocolT,
             *__,
             connection: types.ConnectionT = None,
             models: Iterable[types.ModelT] = (),
@@ -194,7 +193,7 @@ def _bootstrap_persist(
 
         @support.retry
         def run_persist_query(
-            self: types.ServiceProtocolT,
+            self: types.SyncServiceProtocolT,
             *__,
             connection: types.ConnectionT = None,
             models: Iterable[types.ModelT] = (),
@@ -210,7 +209,7 @@ def _bootstrap_persist(
 
         @support.retry
         async def run_persist_query(
-            self: types.ServiceProtocolT,
+            self: types.AsyncServiceProtocolT,
             *__,
             model: types.ModelT = None,
             connection: types.ConnectionT = None,
@@ -226,7 +225,7 @@ def _bootstrap_persist(
 
         @support.retry
         def run_persist_query(
-            self: types.ServiceProtocolT,
+            self: types.SyncServiceProtocolT,
             *__,
             model: types.ModelT = None,
             connection: types.ConnectionT = None,
@@ -280,7 +279,7 @@ def _bootstrap_default(
 
         @support.retry
         async def run_default_query(
-            self: types.ServiceProtocolT,
+            self: types.AsyncServiceProtocolT,
             *args,
             connection: types.ConnectionT = None,
             **kwargs,
@@ -292,7 +291,7 @@ def _bootstrap_default(
 
         @support.retry
         def run_default_query(
-            self: types.ServiceProtocolT,
+            self: types.SyncServiceProtocolT,
             *args,
             connection: types.ConnectionT = None,
             **kwargs,
@@ -304,7 +303,7 @@ def _bootstrap_default(
 
         @support.retry
         async def run_default_query(
-            self: types.ServiceProtocolT,
+            self: types.AsyncServiceProtocolT,
             *args,
             connection: types.ConnectionT = None,
             **kwargs,
@@ -316,7 +315,7 @@ def _bootstrap_default(
 
         @support.retry
         def run_default_query(
-            self: types.ServiceProtocolT,
+            self: types.SyncServiceProtocolT,
             *args,
             connection: types.ConnectionT = None,
             **kwargs,

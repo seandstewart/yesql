@@ -120,10 +120,7 @@ class MetadataT:
     __querylib__: ClassVar[Union[str, pathlib.Path]]
 
 
-_ConnectorT = TypeVar("_ConnectorT", bound=ConnectorProtocol)
-
-
-class ServiceProtocolT(Generic[ModelT, _ConnectorT]):
+class ServiceProtocolT(Generic[ModelT]):
     # User-defined attributes
     model: ClassVar[ModelT]
     metadata: ClassVar[Type[MetadataT]]
@@ -132,7 +129,7 @@ class ServiceProtocolT(Generic[ModelT, _ConnectorT]):
     bulk_protocol: ClassVar[typic.SerdeProtocol[Iterable[ModelT]]]
     queries: ClassVar[aiosql.aiosql.Queries]
     # Initialized Attributes
-    connector: _ConnectorT
+    connector: AnyConnectorProtocolT
 
     def __getattr__(self, item: str) -> QueryMethodProtocolT[ModelT]:
         ...
@@ -145,6 +142,14 @@ class ServiceProtocolT(Generic[ModelT, _ConnectorT]):
 
     def get_kvs(self, model: ModelT) -> Dict[str, Any]:
         ...
+
+
+class AsyncServiceProtocolT(ServiceProtocolT):
+    connector: AsyncConnectorProtocolT
+
+
+class SyncServiceProtocolT(ServiceProtocolT):
+    connector: SyncConnectorProtocolT
 
 
 _ReturnT = TypeVar("_ReturnT", covariant=True)

@@ -52,9 +52,7 @@ class QueryMetadata(types.MetadataT):
     __querylib__: ClassVar[Union[str, pathlib.Path]]
 
 
-class BaseQueryService(
-    types.ServiceProtocolT[_MT, types.AnyConnectorProtocolT[types.ConnectionT]]
-):
+class BaseQueryService(types.ServiceProtocolT[_MT]):
     """The base class for a 'service'.
 
     A 'service' is responsible for querying a specific table.
@@ -105,11 +103,7 @@ class BaseQueryService(
         return super().__init_subclass__(**kwargs)
 
     def __class_getitem__(cls, item):
-        modelt = item
-        if isinstance(item, tuple):
-            modelt, *_ = item
-
-        cls.model = modelt
+        cls.model = item
         return super().__class_getitem__(item)
 
     @classmethod
@@ -164,10 +158,10 @@ class BaseQueryService(
             setattr(cls, name, bootstrapped)
 
 
-class AsyncQueryService(BaseQueryService[_MT, types.ConnectionT]):
+class AsyncQueryService(BaseQueryService[_MT]):
     """An event-loop compatible query service (async/await)."""
 
-    connector: types.AsyncConnectorProtocolT[types.ConnectionT]
+    connector: types.AsyncConnectorProtocolT
 
     async def __aenter__(self):
         await self.connector.initialize()
@@ -281,10 +275,10 @@ class AsyncQueryService(BaseQueryService[_MT, types.ConnectionT]):
             )
 
 
-class SyncQueryService(BaseQueryService[_MT, types.ConnectionT]):
+class SyncQueryService(BaseQueryService[_MT]):
     """A blocking-IO query service."""
 
-    connector: types.SyncConnectorProtocolT[types.ConnectionT]
+    connector: types.SyncConnectorProtocolT
 
     __abstract__ = True
 
