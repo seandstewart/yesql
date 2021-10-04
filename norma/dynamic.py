@@ -1,4 +1,5 @@
 import contextlib
+import warnings
 from typing import (
     Union,
     AsyncContextManager,
@@ -11,6 +12,7 @@ from typing import (
     Generic,
     Iterator,
     ContextManager,
+    Tuple,
 )
 
 import pypika
@@ -36,6 +38,8 @@ class BaseDynamicQueryLib(Generic[_MT, _ConnT]):
     dynamically-built queries are actually needed (think an admin tool, like
     Flask-Admin, for instance).
     """
+
+    _QNAME = "execute"
 
     __slots__ = (
         "service",
@@ -66,9 +70,35 @@ class BaseDynamicQueryLib(Generic[_MT, _ConnT]):
         query: Union[str, pypika.queries.QueryBuilder],
         *args,
         connection: _ConnT = None,
+        coerce: bool = True,
         **kwargs,
     ) -> Union[_ReturnT, Awaitable[_ReturnT]]:
-        ...
+        """Execute any arbitrary query and return the result.
+
+        Notes:
+           This method assumes that the result is coerceable into the model bound to
+           the QueryService. If that is not the case, then make sure to pass in
+           `coerce=False` to the call.
+
+        Args:
+           query:
+               Either a SQL string or a pypika Query.
+           *args:
+               Any args which should be passed on to the query.
+           connection: optional
+               A DBAPI connectable to use during executions.
+               Whether to coerce the query result into the model bound to the service.
+            coerce: defaults True
+                Whether to coerce the query result into the model bound to the service.
+           **kwargs:
+               Any keyword args to pass on to the query.
+        Keyword Args:
+           coerce: bool, defaults True
+        Returns:
+            The query result.
+        """
+        query, params = self._resolve_query(query, args, kwargs)
+        return self._do_execute(query, params, connection=connection, coerce=coerce)
 
     def execute_cursor(
         self,
@@ -81,7 +111,24 @@ class BaseDynamicQueryLib(Generic[_MT, _ConnT]):
         ContextManager[types.SyncCursorProtocolT[_MT]],
         AsyncContextManager[types.AsyncCursorProtocolT[_MT]],
     ]:
-        ...
+        """Execute any arbitrary query and enter a cursor context.
+
+        Args:
+            query:
+                Either a SQL string or a pypika Query.
+            *args:
+                Any args which should be passed on to the query.
+            connection: optional
+                A DBAPI connectable to use during executions.
+            coerce: defaults True
+                Whether to coerce the query result into the model bound to the service.
+            **kwargs:
+                Any keyword args to pass on to the query.
+        """
+        query, params = self._resolve_query(query, args, kwargs)
+        return self._do_execute_cursor(
+            query, params, connection=connection, coerce=coerce
+        )
 
     def select(
         self,
@@ -102,8 +149,8 @@ class BaseDynamicQueryLib(Generic[_MT, _ConnT]):
                 Optionally specify specific fields to return.
             connection: optional
                 A DBAPI connectable to use during executions.
-                Whether to coerce the query result into the model bound to the service.
             coerce: defaults True
+                Whether to coerce the query result into the model bound to the service.
             **where:
                 Optinally specify direct equality comparisions for the WHERE clause.
         """
@@ -116,10 +163,7 @@ class BaseDynamicQueryLib(Generic[_MT, _ConnT]):
         connection: _ConnT = None,
         coerce: bool = True,
         **where: Any,
-    ) -> Union[
-        ContextManager[types.SyncCursorProtocolT[_MT]],
-        AsyncContextManager[types.AsyncCursorProtocolT[_MT]],
-    ]:
+    ):
         """A convenience method for executing an arbitrary SELECT query and entering a cursor context.
 
         Notes:
@@ -132,10 +176,10 @@ class BaseDynamicQueryLib(Generic[_MT, _ConnT]):
                 Optionally specify specific fields to return.
             connection: optional
                 A DBAPI connectable to use during executions.
-                Whether to coerce the query result into the model bound to the service.
             coerce: defaults True
+                Whether to coerce the query result into the model bound to the service.
             **where:
-                Optionally specify direct equality comparisions for the WHERE clause.
+                Optionally specify direct equality comparisons for the WHERE clause.
         """
         query = self.build_select(*fields, **where)
         return self.execute_cursor(query, connection=connection, coerce=coerce)
@@ -147,7 +191,7 @@ class BaseDynamicQueryLib(Generic[_MT, _ConnT]):
             *fields:
                 Optionally specify specific fields to return.
             **where:
-                Optionally specify direct equality comparisions for the WHERE clause.
+                Optionally specify direct equality comparisons for the WHERE clause.
         """
         fs: Iterable[str] = fields or [self.builder.star]
         query: pypika.queries.QueryBuilder = self.builder.select(*fs).where(
@@ -174,6 +218,49 @@ class BaseDynamicQueryLib(Generic[_MT, _ConnT]):
         "sqlite": pypika.Dialects.POSTGRESQL,
     }
 
+    def _do_execute(
+        self,
+        query: str,
+        params: Union[Tuple[Any, ...], Mapping[str, Any]],
+        *,
+        connection: _ConnT = None,
+        coerce: bool = True,
+    ) -> Union[_ReturnT, Awaitable[_ReturnT]]:
+        ...
+
+    def _do_execute_cursor(
+        self,
+        query: str,
+        params: Union[Tuple[Any, ...], Mapping[str, Any]],
+        connection: _ConnT = None,
+        coerce: bool = True,
+    ) -> Union[
+        ContextManager[types.SyncCursorProtocolT[_MT]],
+        AsyncContextManager[types.AsyncCursorProtocolT[_MT]],
+    ]:
+        ...
+
+    def _resolve_query(
+        self,
+        query: Union[str, pypika.queries.QueryBuilder],
+        args: Tuple[Any, ...],
+        kwargs: Mapping[str, Any],
+    ) -> Tuple[str, Union[Tuple[Any, ...], Mapping[str, Any]]]:
+        if isinstance(query, pypika.queries.QueryBuilder):
+            query = query.get_sql()
+
+        if kwargs and self.service.metadata.__driver__ == "asyncpg":
+            warnings.warn(
+                f"Driver {self.service.metadata.__driver__!r} "
+                "does not accept keyword parameters. "
+                "We recommend you pass in arguments for dynamic queries as varargs.",
+                stacklevel=5,
+            )
+            args = (*kwargs.values(),)
+
+        params = args or kwargs
+        return query, params
+
 
 class AsyncDynamicQueryLib(BaseDynamicQueryLib[_MT, _ConnT]):
     """A dynamic query library for asyncio-native drivers."""
@@ -182,73 +269,32 @@ class AsyncDynamicQueryLib(BaseDynamicQueryLib[_MT, _ConnT]):
 
     @support.coerceable(bulk=True)  # type: ignore
     @support.retry
-    async def execute(  # type: ignore[override]
+    async def _do_execute(  # type: ignore[override]
         self,
-        query: Union[str, pypika.queries.QueryBuilder],
-        *args,
+        query: str,
+        params: Union[Tuple[Any, ...], Mapping[str, Any]],
+        *,
         connection: _ConnT = None,
-        **kwargs,
+        coerce: bool = True,
     ) -> _ReturnT:
-        """Execute any arbitrary query and return the result.
-
-        Notes:
-            This method assumes that the result is coerceable into the model bound to
-            the QueryService. If that is not the case, then make sure to pass in
-            `coerce=False` to the call.
-
-        Args:
-            query:
-                Either a SQL string or a pypika Query.
-            *args:
-                Any args which should be passed on to the query.
-            connection: optional
-                A DBAPI connectable to use during executions.
-                Whether to coerce the query result into the model bound to the service.
-            **kwargs:
-                Any keyword args to pass on to the query.
-        Keyword Args:
-            coerce: bool, defaults True
-        Returns:
-
-        """
-        if isinstance(query, pypika.queries.QueryBuilder):
-            query = query.get_sql()
-
         async with self.service.connector.transaction(connection=connection) as c:
             return await self.service.queries.driver_adapter.select(
-                conn=c, query_name="all", sql=query, parameters=args or kwargs
+                conn=c, query_name=self._QNAME, sql=query, parameters=params
             )
 
     @support.retry
     @contextlib.asynccontextmanager
-    async def execute_cursor(
+    async def _do_execute_cursor(
         self,
-        query: Union[str, pypika.queries.QueryBuilder],
-        *args,
+        query: str,
+        params: Union[Tuple[Any, ...], Mapping[str, Any]],
+        *,
         connection: _ConnT = None,
         coerce: bool = True,
-        **kwargs,
     ) -> AsyncIterator[types.AsyncCursorProtocolT[_MT]]:
-        """Execute any arbitrary query and enter a cursor context.
-
-        Args:
-            query:
-                Either a SQL string or a pypika Query.
-            *args:
-                Any args which should be passed on to the query.
-            connection: optional
-                A DBAPI connectable to use during executions.
-                Whether to coerce the query result into the model bound to the service.
-            coerce: defaults True
-            **kwargs:
-                Any keyword args to pass on to the query.
-        """
-        if isinstance(query, pypika.queries.QueryBuilder):
-            query = query.get_sql()
-
         async with self.service.connector.transaction(connection=connection) as c:
             async with self.service.queries.driver_adapter.select_cursor(
-                conn=c, query_name="all", sql=query, parameters=args or kwargs
+                conn=c, query_name="all", sql=query, parameters=params
             ) as factory:
                 cursor = await factory
                 yield (
@@ -265,73 +311,32 @@ class SyncDynamicQueryLib(BaseDynamicQueryLib[_MT, _ConnT]):
 
     @support.coerceable(bulk=True)
     @support.retry
-    def execute(  # type: ignore[override]
+    def _do_execute(  # type: ignore[override]
         self,
-        query: Union[str, pypika.queries.QueryBuilder],
-        *args,
+        query: str,
+        params: Union[Tuple[Any, ...], Mapping[str, Any]],
+        *,
         connection: _ConnT = None,
-        **kwargs,
+        coerce: bool = True,
     ) -> _ReturnT:
-        """Execute any arbitrary query and return the result.
-
-        Notes:
-            This method assumes that the result is coerceable into the model bound to
-            the QueryService. If that is not the case, then make sure to pass in
-            `coerce=False` to the call.
-
-        Args:
-            query:
-                Either a SQL string or a pypika Query.
-            *args:
-                Any args which should be passed on to the query.
-            connection: optional
-                A DBAPI connectable to use during executions.
-                Whether to coerce the query result into the model bound to the service.
-            **kwargs:
-                Any keyword args to pass on to the query.
-        Keyword Args:
-            coerce: bool, defaults True
-        Returns:
-
-        """
-        if isinstance(query, pypika.queries.QueryBuilder):
-            query = query.get_sql()
-
         with self.service.connector.transaction(connection=connection) as c:
             return self.service.queries.driver_adapter.select(
-                conn=c, query_name="all", sql=query, parameters=args or kwargs
+                conn=c, query_name=self._QNAME, sql=query, parameters=params
             )
 
     @support.retry_cursor
     @contextlib.contextmanager
-    def execute_cursor(
+    def _do_execute_cursor(
         self,
-        query: Union[str, pypika.queries.QueryBuilder],
-        *args,
+        query: str,
+        params: Union[Tuple[Any, ...], Mapping[str, Any]],
+        *,
         connection: _ConnT = None,
         coerce: bool = True,
-        **kwargs,
     ) -> Iterator[types.SyncCursorProtocolT[_MT]]:
-        """Execute any arbitrary query and enter a cursor context.
-
-        Args:
-            query:
-                Either a SQL string or a pypika Query.
-            *args:
-                Any args which should be passed on to the query.
-            connection: optional
-                A DBAPI connectable to use during executions.
-                Whether to coerce the query result into the model bound to the service.
-            coerce: defaults True
-            **kwargs:
-                Any keyword args to pass on to the query.
-        """
-        if isinstance(query, pypika.queries.QueryBuilder):
-            query = query.get_sql()
-
         with self.service.connector.transaction(connection=connection) as c:
             with self.service.queries.driver_adapter.select_cursor(
-                conn=c, query_name="all", sql=query, parameters=args or kwargs
+                conn=c, query_name=self._QNAME, sql=query, parameters=params
             ) as cursor:
                 yield (
                     bootstrap.SyncCoercingCursor(self.service, cursor)
