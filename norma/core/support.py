@@ -22,7 +22,11 @@ from typing import (
     TypeVar,
     NoReturn,
     ContextManager,
+    Any,
 )
+
+import orjson
+import typic
 
 from . import types, drivers
 
@@ -423,3 +427,16 @@ _DRIVER_TO_CONNECTOR: _DriverConnectorMappingT = {
 }
 
 _DriverConnectorMappingT = Mapping[drivers.SupportedDriversT, str]
+
+
+def dumps(o: Any) -> str:
+    """Encode any object to JSON."""
+
+    # orjson encodes to binary, but libpq (the c bindings for postgres)
+    # can't write binary data to JSONB columns.
+    # https://github.com/lib/pq/issues/528
+    # This is still orders of magnitude faster than any other lib.
+    return orjson.dumps(o, default=typic.tojson).decode()
+
+
+loads = orjson.loads
