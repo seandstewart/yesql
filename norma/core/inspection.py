@@ -1,4 +1,12 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from aiosql import types
+
+if TYPE_CHECKING:
+    from typing_extensions import TypeGuard
+    from .types import MiddelwareMethodProtocolT
 
 __all__ = ("isbulk", "isscalar", "ismutate", "ispersist")
 
@@ -24,6 +32,10 @@ def ispersist(func: types.QueryFn) -> bool:
     return "insert" in sql or "update" in sql
 
 
+def ismiddleware(o) -> TypeGuard[MiddelwareMethodProtocolT]:
+    return callable(o) and hasattr(o, "__intercepts__")
+
+
 _SCALAR_QUERIES = {
     types.SQLOperationType.SELECT_VALUE,
     types.SQLOperationType.INSERT_UPDATE_DELETE,
@@ -35,6 +47,7 @@ _BULK_QUERIES = {
     types.SQLOperationType.INSERT_UPDATE_DELETE_MANY,
 }
 _MUTATE_QUERIES = {
+    types.SQLOperationType.INSERT_RETURNING,
     types.SQLOperationType.INSERT_UPDATE_DELETE,
     types.SQLOperationType.INSERT_UPDATE_DELETE_MANY,
     types.SQLOperationType.SCRIPT,

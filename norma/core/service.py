@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+import functools
 import logging
 import pathlib
 from typing import (
@@ -15,13 +16,14 @@ from typing import (
     Optional,
     TypeVar,
     Dict,
+    Tuple,
 )
 
 import aiosql
 import inflection
 import typic
 from aiosql.types import QueryFn
-from . import drivers, support, types, bootstrap
+from . import drivers, support, types, bootstrap, inspection
 
 __all__ = (
     "AsyncQueryService",
@@ -100,6 +102,7 @@ class BaseQueryService(types.ServiceProtocolT[_MT]):
         cls.protocol = typic.protocol(cls.model, is_optional=True)
         cls.bulk_protocol = typic.protocol(Iterable[cls.model])
         cls._bootstrap_user_queries()
+        cls._bootstrap_middlewares()
         return super().__init_subclass__(**kwargs)
 
     def __class_getitem__(cls, item):
@@ -156,6 +159,29 @@ class BaseQueryService(types.ServiceProtocolT[_MT]):
             queryfn: QueryFn = getattr(cls.queries, name)
             bootstrapped = bootstrap.bootstrap(cls, queryfn)
             setattr(cls, name, bootstrapped)
+
+    @classmethod
+    def _bootstrap_middlewares(cls):
+        for name, mware in cls._iter_middlewares():
+            cls._bind_middleware(mware)
+
+    @classmethod
+    def _iter_middlewares(cls) -> Iterable[Tuple[str, types.MiddelwareMethodProtocolT]]:
+        for name, call in inspect.getmembers(cls, inspection.ismiddleware):
+            yield name, call
+
+    @classmethod
+    def _bind_middleware(cls, mware: types.MiddelwareMethodProtocolT):
+        for qname in mware.__intercepts__:
+            query: types.QueryMethodProtocolT = getattr(cls, qname)
+
+            @functools.wraps(query)  # type: ignore
+            def _wrap_query(
+                self: types.ServiceProtocolT, *args, __mw=mware, __q=query, **kwargs
+            ):
+                return __mw(self, __q, *args, **kwargs)
+
+            setattr(cls, qname, _wrap_query)
 
 
 class AsyncQueryService(BaseQueryService[_MT]):

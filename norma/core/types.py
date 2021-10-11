@@ -271,6 +271,8 @@ class MiddelwareMethodProtocolT(Protocol[_ReturnT_in]):
     augmentation of the input and/or return value of the assigned `method`.
     """
 
+    __intercepts__: Tuple[str, ...]
+
     def __call__(
         _,
         self: ServiceProtocolT,
