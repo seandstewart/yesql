@@ -109,3 +109,4 @@ venv.bak/
 /pip-wheel-metadata/
 /benchmark/.cases.json
 *.DS_Store
+/examples/sqlite/blog.db
