@@ -281,7 +281,7 @@ def retry(
                         tries += 1
                         await asyncio.sleep(delay)
                         try:
-                            return await afunc(*args, **kwargs)
+                            return await afunc(self, *args, **kwargs)
                         except _errors:
                             _logger.warning("Failed on retry.", retry=tries)
                     _logger.error(
@@ -297,7 +297,8 @@ def retry(
                     return func_(self, *args, **kwargs)
                 except (*_errors, *self.connector.TRANSIENT) as e:
                     _logger.info(
-                        "Got a watched error. Entering retry loop.",
+                        "Got a watched error. Entering retry loop. "
+                        "%(error): %(exception)",
                         error=e.__class__.__name__,
                         exception=str(e),
                     )
@@ -306,9 +307,9 @@ def retry(
                         tries += 1
                         time.sleep(delay)
                         try:
-                            return func_(*args, **kwargs)
+                            return func_(self, *args, **kwargs)
                         except _errors:
-                            _logger.warning("Failed on retry.", retry=tries)
+                            _logger.warning("Failed on retry=%(retry)s.", retry=tries)
                     _logger.error(
                         "Couldn't recover on retries. Re-raising original error."
                     )
@@ -350,7 +351,8 @@ def retry_cursor(
                         yield cm
                 except (*_errors, *self.connector.TRANSIENT) as e:
                     _logger.info(
-                        "Got a watched error. Entering retry loop.",
+                        "Got a watched error. Entering retry loop. "
+                        "%(error): %(exception)",
                         error=e.__class__.__name__,
                         exception=str(e),
                     )
@@ -362,7 +364,7 @@ def retry_cursor(
                             async with afunc(self, *args, **kwargs) as cm:
                                 yield cm
                         except _errors:
-                            _logger.warning("Failed on retry.", retry=tries)
+                            _logger.warning("Failed on retry=%(retry)s.", retry=tries)
                     _logger.error(
                         "Couldn't recover on retries. Re-raising original error."
                     )
