@@ -6,6 +6,8 @@ import contextvars
 from typing import Optional, Iterator
 
 import sqlite3
+
+import aiosql.adapters.sqlite3
 import typic
 
 from norma import types
@@ -21,16 +23,16 @@ CONNECTOR: contextvars.ContextVar[Optional[SQLiteConnector]] = contextvars.Conte
 def connector(**options) -> SQLiteConnector:
     """A high-level connector factory which uses context-local state."""
     with _lock():
-        if (connector := CONNECTOR.get()) is None:
-            connector = SQLiteConnector(**options)
-            CONNECTOR.set(connector)
-        connector.initialize()
-        return connector
+        if (conn := CONNECTOR.get()) is None:
+            conn = SQLiteConnector(**options)
+            CONNECTOR.set(conn)
+        conn.initialize()
+        return conn
 
 
 def teardown():
-    if (connector := CONNECTOR.get()) is not None:
-        connector.close()
+    if (conn := CONNECTOR.get()) is not None:
+        conn.close()
 
 
 class SQLiteConnector(types.SyncConnectorProtocolT[sqlite3.Connection]):
@@ -54,7 +56,7 @@ class SQLiteConnector(types.SyncConnectorProtocolT[sqlite3.Connection]):
 
         with _lock():
             conn: sqlite3.Connection
-            with self.connection() as conn:
+            with sqlite3.connect(**self.options) as conn:
                 cur: sqlite3.Cursor = conn.execute("SELECT 1;")
                 cur.close()
             self.initialized = True
@@ -100,7 +102,7 @@ class SQLiteConnector(types.SyncConnectorProtocolT[sqlite3.Connection]):
 
 @typic.settings(prefix="SQLITE_", aliases={"database_url": "sqlite_database"})
 class SQLiteSettings:
-    database: Optional[typic.DSN] = None
+    database: Optional[str] = None
     timeout: Optional[float] = None
     detect_types: Optional[int] = None
     isolation_level: Optional[str] = None
@@ -121,3 +123,13 @@ def _lock() -> threading.Lock:
         lock = threading.Lock()
         LOCK.set(lock)
     return lock
+
+
+class SQLite3ReturningDriverAdaptor(aiosql.adapters.sqlite3.SQLite3DriverAdapter):
+    @staticmethod
+    def insert_returning(conn, _query_name, sql, parameters):
+        cur: sqlite3.Cursor = conn.cursor()
+        cur.execute(sql, parameters)
+        results = cur.fetchone()
+        cur.close()
+        return results

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import inspect
 import functools
 import logging
@@ -143,11 +144,20 @@ class BaseQueryService(types.ServiceProtocolT[_MT]):
         if not hasattr(cls.metadata, "__querylib__"):
             cls.metadata.__querylib__ = pathlib.Path.cwd().resolve()
         path = cls.metadata.__querylib__ / cls.metadata.__tablename__
-        driver = cls.metadata.__driver__
-        if driver == "psycopg":
-            driver = "psycopg2"
+        driver = cls._DRIVER_TO_AIOSQL[cls.metadata.__driver__]
+        if "." in driver:
+            modname, clsname = driver.rsplit(".", maxsplit=1)
+            mod = importlib.import_module(modname)
+            driver = getattr(mod, clsname)
         lib = aiosql.from_path(path, driver)
         return lib
+
+    _DRIVER_TO_AIOSQL = {
+        "asyncpg": "asyncpg",
+        "aiosqlite": "norma.core.drivers.aio.sqlite.AIOSQLiteReturningDriverAdaptor",
+        "psycopg": "psycopg2",
+        "sqlite": "norma.core.drivers.sio.sqlite.SQLite3ReturningDriverAdaptor",
+    }
 
     @classmethod
     def _bootstrap_user_queries(cls):

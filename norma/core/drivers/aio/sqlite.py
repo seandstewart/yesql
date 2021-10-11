@@ -5,6 +5,7 @@ import contextlib
 import contextvars
 from typing import AsyncIterator, Optional
 
+import aiosql.adapters.aiosqlite
 import aiosqlite
 import typic
 
@@ -54,7 +55,7 @@ class AIOSQLiteConnector(types.AsyncConnectorProtocolT[aiosqlite.Connection]):
 
         async with _lock():
             conn: aiosqlite.Connection
-            async with self.connection() as conn:
+            async with aiosqlite.connect(**self.options) as conn:
                 cur: aiosqlite.Cursor = await conn.execute("SELECT 1;")
                 await cur.close()
             self.initialized = True
@@ -100,7 +101,7 @@ class AIOSQLiteConnector(types.AsyncConnectorProtocolT[aiosqlite.Connection]):
 
 @typic.settings(prefix="SQLITE_", aliases={"database_url": "sqlite_database"})
 class AIOSQLiteSettings:
-    database: Optional[typic.DSN] = None
+    database: Optional[str] = None
     timeout: Optional[float] = None
     detect_types: Optional[int] = None
     isolation_level: Optional[str] = None
@@ -121,3 +122,11 @@ def _lock() -> asyncio.Lock:
         lock = asyncio.Lock()
         LOCK.set(lock)
     return lock
+
+
+class AIOSQLiteReturningDriverAdaptor(aiosql.adapters.aiosqlite.AioSQLiteAdapter):
+    @staticmethod
+    async def insert_returning(conn, _query_name, sql, parameters):
+        cur: aiosqlite.Cursor
+        async with conn.execute(sql, parameters) as cur:
+            return await cur.fetchone()
