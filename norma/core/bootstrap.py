@@ -49,7 +49,7 @@ def bootstrap(
             or inspection.isscalar(func)
         ),
     )
-    bulk = cast(Literal[True, False], bool(not scalar and inspection.isbulk(func)))
+    bulk = cast(Literal[True, False], inspection.isbulk(func))
     run_query: types.QueryMethodProtocolT[_MT]
     iscursor = func.__name__.endswith("_cursor")
     if iscursor:
