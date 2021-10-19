@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import inspect
+import itertools
 from typing import (
     overload,
     Type,
@@ -185,7 +186,7 @@ def _bootstrap_persist(
             **___,
         ):
             if models:
-                data = (self.get_kvs(m) for m in models)
+                data = itertools.chain(data, (self.get_kvs(m) for m in models))
             async with self.connector.transaction(connection=connection) as c:
                 return await func(c, data)
 
@@ -201,7 +202,7 @@ def _bootstrap_persist(
             **___,
         ):
             if models:
-                data = (self.get_kvs(m) for m in models)
+                data = itertools.chain(data, (self.get_kvs(m) for m in models))
             with self.connector.transaction(connection=connection) as c:
                 return func(c, data)
 
