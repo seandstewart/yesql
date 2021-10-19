@@ -22,6 +22,13 @@ async def run():
     print(f"Updated a post: {updated!r}")
     deleted = await posts.delete(id=persisted.id)
     print(f"Deleted a post: {deleted!r}")
+    await posts.bulk_create(models=[post])
+    created = await posts.all()
+    print(f"Bulk-created posts: {created}")
+    await posts.delete(id=created[0].id)
+    created = await posts.bulk_create_returning([post])
+    print(f"Bulk-created (returning) posts: {created}")
+    await posts.delete(id=created[0].id)
 
 
 if __name__ == "__main__":

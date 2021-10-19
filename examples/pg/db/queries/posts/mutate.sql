@@ -18,6 +18,55 @@ VALUES (
 )
 RETURNING *;
 
+-- name: bulk_create*!
+-- Create a new blog post :)
+INSERT INTO blog.posts (
+    title,
+    subtitle,
+    tagline,
+    tags,
+    body,
+    publication_date
+)
+VALUES (
+    :title,
+    :subtitle,
+    :tagline,
+    :tags,
+    :body,
+    :publication_date
+);
+
+-- name: bulk_create_returning
+-- Create a new blog post :)
+WITH new_posts AS (
+    SELECT
+        title,
+        subtitle,
+        tagline,
+        body,
+        coalesce(tags, '{}'::text[]) as tags,
+        publication_date
+    FROM unnest(:posts::blog.new_post[])
+    AS t(
+         title,
+         subtitle,
+         tagline,
+         body,
+         tags,
+         publication_date
+    )
+)
+INSERT INTO blog.posts (
+    title,
+    subtitle,
+    tagline,
+    body,
+    tags,
+    publication_date
+) SELECT * FROM new_posts
+RETURNING *;
+
 -- name: update<!
 -- Update a post with all new data.
 UPDATE blog.posts

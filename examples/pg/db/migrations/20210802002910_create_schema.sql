@@ -73,6 +73,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS post_slug
     ON blog.posts (slug)
     WHERE slug IS NOT NULL;
 
+CREATE TYPE blog.new_post AS (
+    title TEXT,
+    subtitle TEXT,
+    tagline TEXT,
+    body TEXT,
+    tags TEXT[],
+    publication_date DATE
+);
+
 -- migrate:down
 
 DROP SCHEMA IF EXISTS blog CASCADE;

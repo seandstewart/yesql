@@ -22,6 +22,10 @@ def run():
     print(f"Updated a post: {updated!r}")
     deleted = posts.delete(id=persisted.id)
     print(f"Deleted a post: {deleted!r}")
+    posts.bulk_create(models=[post])
+    created = posts.all()
+    print(f"Bulk-created posts: {created}")
+    posts.delete(id=created[0].id)
 
 
 if __name__ == "__main__":

@@ -31,6 +31,34 @@ COMMENT ON EXTENSION unaccent IS 'text search dictionary that removes accents';
 
 
 --
+-- Name: new_post; Type: TYPE; Schema: blog; Owner: -
+--
+
+CREATE TYPE blog.new_post AS (
+	title text,
+	subtitle text,
+	tagline text,
+	body text,
+	tags text[],
+	publication_date date
+);
+
+
+--
+-- Name: new_post; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.new_post AS (
+	title text,
+	subtitle text,
+	tagline text,
+	body text,
+	tags text[],
+	publication_date date
+);
+
+
+--
 -- Name: get_updated_at(); Type: FUNCTION; Schema: public; Owner: -
 --
 
