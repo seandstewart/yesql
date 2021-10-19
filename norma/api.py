@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import functools
 import pathlib
-from typing import Union, Type
+from typing import Union, Type, Tuple, Any
 
 import inflection
 import typic
@@ -88,6 +88,7 @@ def servicemaker(
     exclude_fields: frozenset[str] = frozenset(),
     scalar_queries: frozenset[str] = frozenset(),
     base_service: Type[BaseQueryService] = None,
+    custom_queries: Tuple[types.QueryMethodProtocolT, ...] = (),
 ) -> Union[
     Type[AsyncQueryService[types.ModelT]],
     Type[SyncQueryService[types.ModelT]],
@@ -113,6 +114,8 @@ def servicemaker(
             Any queries in your library that do not resolve to your model.
         base_service: optional
             Optionally provide your own base class for your query service.
+        custom_queries: optional
+            Optionally provide custom implementations of query methods.
 
     Returns:
         A new query service class.
@@ -132,11 +135,12 @@ def servicemaker(
             "__scalar_queries__": scalar_queries,
         },
     )
-    Service = type(
-        inflection.pluralize(tablename).title(),
-        (BaseService,),
-        {"metadata": Metadata, "model": model},
-    )
+    namespace: dict[str, Any] = {f.__name__: f for f in custom_queries}
+    namespace.update(metadata=Metadata, model=model)
+    service_name = inflection.camelize(
+        inflection.pluralize(tablename), uppercase_first_letter=True
+    ).title()
+    Service = type(service_name, (BaseService,), namespace)
     return Service
 
 

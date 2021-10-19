@@ -166,6 +166,10 @@ class BaseQueryService(types.ServiceProtocolT[_MT]):
         Overload this method to customize how your queries are bootstrapped.
         """
         for name in cls.queries.available_queries:
+            # Allow users to override the default bootstrapping.
+            if hasattr(cls, name):
+                continue
+
             queryfn: QueryFn = getattr(cls.queries, name)
             bootstrapped = bootstrap.bootstrap(cls, queryfn)
             setattr(cls, name, bootstrapped)
