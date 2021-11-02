@@ -13,6 +13,8 @@ from typing import (
     Iterator,
     ContextManager,
     Tuple,
+    Literal,
+    Callable,
 )
 
 import pypika
@@ -28,7 +30,7 @@ _CtxT = TypeVar("_CtxT")
 _ReturnT = Union[Iterable[_MT], Iterable[types.ScalarT]]
 
 
-class BaseDynamicQueryLib(Generic[_MT, _ConnT]):
+class BaseDynamicQueryLib(Generic[_MT]):
     """Query Library for building ad-hoc queries in-memory.
 
     This service acts as glue between the `pypika` query-builder library and Norma's
@@ -52,7 +54,7 @@ class BaseDynamicQueryLib(Generic[_MT, _ConnT]):
 
     def __init__(
         self,
-        service: types.ServiceProtocolT[_MT, types.AnyConnectorProtocolT[_ConnT]],
+        service: types.ServiceProtocolT[_MT],
         *,
         schema: str = None,
     ):
@@ -71,6 +73,7 @@ class BaseDynamicQueryLib(Generic[_MT, _ConnT]):
         *args,
         connection: _ConnT = None,
         coerce: bool = True,
+        rtype: Literal["all", "one", "val"] = "all",
         **kwargs,
     ) -> Union[_ReturnT, Awaitable[_ReturnT]]:
         """Execute any arbitrary query and return the result.
@@ -90,6 +93,9 @@ class BaseDynamicQueryLib(Generic[_MT, _ConnT]):
                Whether to coerce the query result into the model bound to the service.
             coerce: defaults True
                 Whether to coerce the query result into the model bound to the service.
+            rtype: One of "all", "one", "val"; defaults "all"
+                Fetch all rows, one row, or the first value in the first row.
+                If "val", `coerce` will always evaluate to False.
            **kwargs:
                Any keyword args to pass on to the query.
         Keyword Args:
@@ -98,7 +104,15 @@ class BaseDynamicQueryLib(Generic[_MT, _ConnT]):
             The query result.
         """
         query, params = self._resolve_query(query, args, kwargs)
-        return self._do_execute(query, params, connection=connection, coerce=coerce)
+        operation = self.service.queries.driver_adapter.select
+        if rtype == "one":
+            operation = self.service.queries.driver_adapter.select_one
+        elif rtype == "val":
+            operation = self.service.queries.driver_adapter.select_value
+            coerce = False
+        return self._do_execute(
+            query, params, operation, connection=connection, coerce=coerce
+        )
 
     def execute_cursor(
         self,
@@ -135,6 +149,7 @@ class BaseDynamicQueryLib(Generic[_MT, _ConnT]):
         *fields,
         connection: _ConnT = None,
         coerce: bool = True,
+        rtype: Literal["all", "one", "val"] = "all",
         **where: Any,
     ) -> Union[_ReturnT, Awaitable[_ReturnT]]:
         """A convenience method for executing an arbitrary SELECT query.
@@ -151,11 +166,14 @@ class BaseDynamicQueryLib(Generic[_MT, _ConnT]):
                 A DBAPI connectable to use during executions.
             coerce: defaults True
                 Whether to coerce the query result into the model bound to the service.
+            rtype: One of "all", "one", "val"; defaults "all"
+                Fetch all rows, one row, or the first value in the first row.
+                If "val", `coerce` will always evaluate to False.
             **where:
                 Optinally specify direct equality comparisions for the WHERE clause.
         """
         query = self.build_select(*fields, **where)
-        return self.execute(query, connection=connection, coerce=coerce)
+        return self.execute(query, connection=connection, coerce=coerce, rtype=rtype)
 
     def select_cursor(
         self,
@@ -222,9 +240,11 @@ class BaseDynamicQueryLib(Generic[_MT, _ConnT]):
         self,
         query: str,
         params: Union[Tuple[Any, ...], Mapping[str, Any]],
+        operation: Callable[..., Union[_ReturnT, Awaitable[_ReturnT]]],
         *,
         connection: _ConnT = None,
         coerce: bool = True,
+        rtype: Literal["all", "one", "val"] = "all",
     ) -> Union[_ReturnT, Awaitable[_ReturnT]]:
         ...
 
@@ -262,10 +282,10 @@ class BaseDynamicQueryLib(Generic[_MT, _ConnT]):
         return query, params
 
 
-class AsyncDynamicQueryLib(BaseDynamicQueryLib[_MT, _ConnT]):
+class AsyncDynamicQueryLib(BaseDynamicQueryLib[_MT]):
     """A dynamic query library for asyncio-native drivers."""
 
-    service: service.AsyncQueryService[_MT, _ConnT]
+    service: service.AsyncQueryService[_MT]
 
     @support.coerceable(bulk=True)  # type: ignore
     @support.retry
@@ -273,14 +293,13 @@ class AsyncDynamicQueryLib(BaseDynamicQueryLib[_MT, _ConnT]):
         self,
         query: str,
         params: Union[Tuple[Any, ...], Mapping[str, Any]],
+        operation: Callable[..., Awaitable[_ReturnT]],
         *,
         connection: _ConnT = None,
         coerce: bool = True,
     ) -> _ReturnT:
         async with self.service.connector.transaction(connection=connection) as c:
-            return await self.service.queries.driver_adapter.select(
-                conn=c, query_name=self._QNAME, sql=query, parameters=params
-            )
+            return await operation(c, self._QNAME, sql=query, parameters=params)
 
     @support.retry
     @contextlib.asynccontextmanager
@@ -294,7 +313,7 @@ class AsyncDynamicQueryLib(BaseDynamicQueryLib[_MT, _ConnT]):
     ) -> AsyncIterator[types.AsyncCursorProtocolT[_MT]]:
         async with self.service.connector.transaction(connection=connection) as c:
             async with self.service.queries.driver_adapter.select_cursor(
-                conn=c, query_name="all", sql=query, parameters=params
+                conn=c, query_name=self._QNAME, sql=query, parameters=params
             ) as factory:
                 cursor = await factory
                 yield (
@@ -304,10 +323,10 @@ class AsyncDynamicQueryLib(BaseDynamicQueryLib[_MT, _ConnT]):
                 )
 
 
-class SyncDynamicQueryLib(BaseDynamicQueryLib[_MT, _ConnT]):
+class SyncDynamicQueryLib(BaseDynamicQueryLib[_MT]):
     """A dynamic query library for sync-io-native drivers."""
 
-    service: service.SyncQueryService[_MT, _ConnT]
+    service: service.SyncQueryService[_MT]
 
     @support.coerceable(bulk=True)
     @support.retry
@@ -315,14 +334,13 @@ class SyncDynamicQueryLib(BaseDynamicQueryLib[_MT, _ConnT]):
         self,
         query: str,
         params: Union[Tuple[Any, ...], Mapping[str, Any]],
+        operation: Callable[..., _ReturnT],
         *,
         connection: _ConnT = None,
         coerce: bool = True,
     ) -> _ReturnT:
         with self.service.connector.transaction(connection=connection) as c:
-            return self.service.queries.driver_adapter.select(
-                conn=c, query_name=self._QNAME, sql=query, parameters=params
-            )
+            return operation(c, self._QNAME, sql=query, parameters=params)
 
     @support.retry_cursor
     @contextlib.contextmanager
