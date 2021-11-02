@@ -52,11 +52,11 @@ class ConnectorProtocol(Protocol[_CtxT, _NoReturnT, _ConnT]):
     def initialize(self) -> _NoReturnT:
         ...
 
-    def connection(self, *, timeout: int = 10, c: _ConnT = None) -> _CtxT:
+    def connection(self, *, timeout: int = 10, connection: _ConnT = None) -> _CtxT:
         ...
 
     def transaction(
-        self, *, connection: _ConnT = None, rollback: bool = False
+        self, *, timeout: int = 10, connection: _ConnT = None, rollback: bool = False
     ) -> _CtxT:
         ...
 
