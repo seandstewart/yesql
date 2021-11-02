@@ -1,3 +1,4 @@
+import norma.dynamic
 from db import client, model
 
 
@@ -19,8 +20,26 @@ def run():
     print(f"Deleted a post: {deleted!r}")
 
 
+def dynamic():
+    posts = client.SyncPosts()
+    dyn = norma.dynamic.SyncDynamicQueryLib(posts)
+    post = model.Post(
+        title="My Great Blog Post",
+        subtitle="It's super great. Trust me...",
+        tagline="You'll be glad you read it.",
+    )
+    persisted = posts.create(model=post)
+    found = dyn.select(title=persisted.title)
+    print(f"Dynamically selected posts: {found}")
+    q = dyn.table.select(dyn.table.id).where(dyn.table.title == persisted.title)
+    id = dyn.execute(q, rtype="val")
+    print(f"Dynamically for Post ID with {post.title=}: {id=}")
+    posts.delete(id=persisted.id)
+
+
 if __name__ == "__main__":
     import os
 
     os.environ["database_url"] = "blog.db"
     run()
+    dynamic()

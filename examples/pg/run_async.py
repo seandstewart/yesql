@@ -1,3 +1,5 @@
+import norma.dynamic
+
 from db import client, model
 
 
@@ -31,6 +33,24 @@ async def run():
     await posts.delete(id=created[0].id)
 
 
+async def dynamic():
+    posts = client.AsyncPosts()
+    dyn = norma.dynamic.AsyncDynamicQueryLib(posts, schema="blog")
+    post = model.Post(
+        title="My Great Blog Post",
+        subtitle="It's super great. Trust me...",
+        tagline="You'll be glad you read it.",
+        tags={"tips", "tricks", "cool stuff"},
+    )
+    persisted = await posts.create(model=post)
+    found = await dyn.select(title=persisted.title)
+    print(f"Dynamically selected posts: {found}")
+    q = dyn.table.select(dyn.table.id).where(dyn.table.title == persisted.title)
+    id = await dyn.execute(q, rtype="val")
+    print(f"Dynamically for Post ID with {post.title=}: {id=}")
+    await posts.delete(id=persisted.id)
+
+
 if __name__ == "__main__":
     import asyncio
     import os
@@ -39,3 +59,4 @@ if __name__ == "__main__":
         "database_url"
     ] = "postgres://postgres:@localhost:5432/blog?sslmode=disable"
     asyncio.run(run())
+    asyncio.run(dynamic())
