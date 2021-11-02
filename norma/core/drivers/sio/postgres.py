@@ -67,26 +67,30 @@ class PsycoPGConnector(types.SyncConnectorProtocolT[psycopg.Connection]):
             return
         with _lock():
             self.pool = create_pool(**self.pool_kwargs)
-            self.pool.kwargs.setdefault("row_factory", pgrows.dict_row)
+            self.pool.kwargs.setdefault("row_factory", pgrows.namedtuple_row)
             self.initialized = True
 
     @contextlib.contextmanager
     def connection(
-        self, *, timeout: int = 10, c: psycopg.Connection = None
+        self, *, timeout: int = 10, connection: psycopg.Connection = None
     ) -> Iterator[psycopg.Connection]:
         self.initialize()
-        if c:
-            yield c
+        if connection:
+            yield connection
         else:
             with self.pool.connection(timeout=timeout) as conn:
                 yield conn
 
     @contextlib.contextmanager
     def transaction(
-        self, *, connection: psycopg.Connection = None, rollback: bool = False
+        self,
+        *,
+        timeout: int = 10,
+        connection: psycopg.Connection = None,
+        rollback: bool = False,
     ) -> Iterator[psycopg.Connection]:
         conn: psycopg.Connection
-        with self.connection(c=connection) as conn:
+        with self.connection(timeout=timeout, connection=connection) as conn:
             with conn.transaction(force_rollback=rollback):
                 yield conn
 

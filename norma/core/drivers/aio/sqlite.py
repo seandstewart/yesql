@@ -62,11 +62,11 @@ class AIOSQLiteConnector(types.AsyncConnectorProtocolT[aiosqlite.Connection]):
 
     @contextlib.asynccontextmanager
     async def connection(
-        self, *, timeout: int = 10, c: aiosqlite.Connection = None
+        self, *, timeout: int = 10, connection: aiosqlite.Connection = None
     ) -> AsyncIterator[aiosqlite.Connection]:
         await self.initialize()
-        if c:
-            yield c
+        if connection:
+            yield connection
         else:
             options = {**self.options}
             options.update(timeout=timeout)
@@ -78,10 +78,14 @@ class AIOSQLiteConnector(types.AsyncConnectorProtocolT[aiosqlite.Connection]):
 
     @contextlib.asynccontextmanager
     async def transaction(
-        self, *, connection: aiosqlite.Connection = None, rollback: bool = False
+        self,
+        *,
+        timeout: int = 10,
+        connection: aiosqlite.Connection = None,
+        rollback: bool = False,
     ) -> AsyncIterator[aiosqlite.Connection]:
         conn: aiosqlite.Connection
-        async with self.connection(c=connection) as conn:
+        async with self.connection(timeout=timeout, connection=connection) as conn:
             yield conn
             if not rollback:
                 await conn.commit()

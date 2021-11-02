@@ -75,25 +75,36 @@ class AsyncPGConnector(types.AsyncConnectorProtocolT[asyncpg.Connection]):
 
     @contextlib.asynccontextmanager
     async def connection(
-        self, *, timeout: int = 10, c: asyncpg.Connection = None
+        self, *, timeout: int = 10, connection: asyncpg.Connection = None
     ) -> AsyncIterator[asyncpg.Connection]:
         await self.initialize()
-        if c:
-            yield c
+        if connection:
+            yield connection
         else:
             async with self.pool.acquire(timeout=timeout) as conn:
                 yield conn
 
     @contextlib.asynccontextmanager
     async def transaction(
-        self, *, connection: asyncpg.Connection = None, rollback: bool = False
+        self,
+        *,
+        timeout: int = 10,
+        connection: asyncpg.Connection = None,
+        rollback: bool = False,
     ) -> AsyncIterator[asyncpg.Connection]:
-        async with self.connection(c=connection) as conn:
+        conn: asyncpg.Connection
+        async with self.connection(timeout=timeout, connection=connection) as conn:
             if rollback:
                 t: asyncpg.transaction.Transaction = conn.transaction()
                 await t.start()
-                yield conn
-                await t.rollback()
+                try:
+                    yield conn
+                finally:
+                    try:
+                        await t.rollback()
+                    except asyncpg.InterfaceError:
+                        # The transaction is either closed or errored already. Move on.
+                        pass
             else:
                 async with conn.transaction():
                     yield conn
