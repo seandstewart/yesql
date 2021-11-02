@@ -165,13 +165,14 @@ class BaseQueryService(types.ServiceProtocolT[_MT]):
 
         Overload this method to customize how your queries are bootstrapped.
         """
+        cursor_proxy = support.get_cursor_proxy(cls.metadata.__driver__)
         for name in cls.queries.available_queries:
             # Allow users to override the default bootstrapping.
             if hasattr(cls, name):
                 continue
 
             queryfn: QueryFn = getattr(cls.queries, name)
-            bootstrapped = bootstrap.bootstrap(cls, queryfn)
+            bootstrapped = bootstrap.bootstrap(cls, queryfn, cursor_proxy=cursor_proxy)
             setattr(cls, name, bootstrapped)
 
     @classmethod
@@ -237,7 +238,7 @@ class AsyncQueryService(BaseQueryService[_MT]):
         name = query if isinstance(query, str) else query.__name__
         queryfn: aiosql.types.QueryFn = getattr(self.queries, name)
         sql = f"SELECT count(*) FROM ({queryfn.sql.rstrip(';')}) AS q;"
-        async with self.connector.connection(c=connection) as c:
+        async with self.connector.connection(connection=connection) as c:
             return await self.queries.driver_adapter.select_value(
                 c,
                 query_name=name,
@@ -359,7 +360,7 @@ class SyncQueryService(BaseQueryService[_MT]):
         name = query if isinstance(query, str) else query.__name__
         queryfn: aiosql.types.QueryFn = getattr(self.queries, name)
         sql = f"SELECT count(*) FROM ({queryfn.sql.rstrip(';')}) AS q;"
-        with self.connector.connection(c=connection) as c:
+        with self.connector.connection(connection=connection) as c:
             return self.queries.driver_adapter.select_value(
                 c,
                 query_name=name,

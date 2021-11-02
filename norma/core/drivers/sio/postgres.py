@@ -3,7 +3,7 @@ from __future__ import annotations
 import threading
 import contextlib
 import contextvars
-from typing import Optional, Iterator
+from typing import Optional, Iterator, Union
 
 import psycopg
 import psycopg_pool as pgpool
@@ -182,6 +182,25 @@ def create_pool(**overrides) -> pgpool.ConnectionPool:
             connect_kwargs["conninfo"] = dsn
     pool_kwargs["kwargs"] = connect_kwargs
     return pgpool.ConnectionPool(**pool_kwargs)
+
+
+class _PsycoPGCursorProxy:
+    __slots__ = ("_cursor",)
+
+    def __init__(self, cursor: Union[psycopg.Cursor, psycopg.ServerCursor]):
+        self._cursor = cursor
+
+    def __getattr__(self, item):
+        return self._cursor.__getattribute__(item)
+
+    def forward(self, n: int, *args, timeout: float = None, **kwargs):
+        return self._cursor.scroll(value=n, *args, **kwargs)
+
+    def fetch(self, n: int, *args, timeout: float = None, **kwargs):
+        return self._cursor.fetchmany(n)
+
+    def fetchrow(self, *args, timeout: float = None, **kwargs):
+        return self._cursor.fetchone()
 
 
 def _init_psycopg():

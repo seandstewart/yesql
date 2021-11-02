@@ -14,6 +14,8 @@ from typing import (
     Iterator,
     Optional,
     AsyncIterator,
+    Union,
+    Callable,
 )
 
 from aiosql.types import QueryFn
@@ -24,7 +26,9 @@ _MT = TypeVar("_MT")
 
 
 def bootstrap(
-    cls: Type[types.ServiceProtocolT[_MT]], func: QueryFn
+    cls: Type[types.ServiceProtocolT[_MT]],
+    func: QueryFn,
+    cursor_proxy: Union[Callable, Type] = lambda c: c,
 ) -> types.QueryMethodProtocolT[_MT]:
     """Given a ServiceProtocol and a Query function, get a "bootstrapped" method.
 
@@ -53,7 +57,7 @@ def bootstrap(
     run_query: types.QueryMethodProtocolT[_MT]
     iscursor = func.__name__.endswith("_cursor")
     if iscursor:
-        run_query = _bootstrap_cursor(func, scalar=scalar)  # type: ignore
+        run_query = _bootstrap_cursor(func, scalar=scalar, proxy=cursor_proxy)  # type: ignore
 
     elif inspection.ispersist(func):
         run_query = _bootstrap_persist(func, scalar=scalar, bulk=bulk)  # type: ignore
@@ -69,7 +73,9 @@ def bootstrap(
     return run_query
 
 
-def _bootstrap_cursor(func: QueryFn, *, scalar: bool) -> types.CursorMethodProtocolT:
+def _bootstrap_cursor(
+    func: QueryFn, *, scalar: bool, proxy: Union[Callable, Type]
+) -> types.CursorMethodProtocolT:
     ufunc = inspect.unwrap(func)
     isaio = inspect.isasyncgenfunction(ufunc)
     if scalar and isaio:
@@ -83,9 +89,9 @@ def _bootstrap_cursor(func: QueryFn, *, scalar: bool) -> types.CursorMethodProto
             coerce: bool = False,
             **kwargs,
         ):
-            async with self.connector.connection(c=connection) as c:
+            async with self.connector.connection(connection=connection) as c:
                 async with func(c, *args, **kwargs) as cursor:
-                    yield await cursor
+                    yield proxy(await cursor)
 
         return cast(types.CursorMethodProtocolT, run_scalar_query_cursor)
 
@@ -100,9 +106,9 @@ def _bootstrap_cursor(func: QueryFn, *, scalar: bool) -> types.CursorMethodProto
             coerce: bool = False,
             **kwargs,
         ):
-            with self.connector.connection(c=connection) as c:
+            with self.connector.connection(connection=connection) as c:
                 with func(c, *args, **kwargs) as cursor:
-                    yield cursor
+                    yield proxy(cursor)
 
         return cast(types.CursorMethodProtocolT, run_scalar_query_cursor)
 
@@ -117,10 +123,10 @@ def _bootstrap_cursor(func: QueryFn, *, scalar: bool) -> types.CursorMethodProto
             coerce: bool = True,
             **kwargs,
         ):
-            async with self.connector.connection(c=connection) as c:
+            async with self.connector.connection(connection=connection) as c:
                 async with func(c, *args, **kwargs) as factory:
                     cursor = await factory
-                    yield AsyncCoercingCursor(self, cursor) if coerce else cursor
+                    yield AsyncCoercingCursor(self, proxy(cursor)) if coerce else cursor
 
         return cast(types.CursorMethodProtocolT, run_query_cursor)
 
@@ -135,9 +141,9 @@ def _bootstrap_cursor(func: QueryFn, *, scalar: bool) -> types.CursorMethodProto
             coerce: bool = True,
             **kwargs,
         ):
-            with self.connector.connection(c=connection) as c:
+            with self.connector.connection(connection=connection) as c:
                 with func(c, *args, **kwargs) as cursor:
-                    yield SyncCoercingCursor(self, cursor) if coerce else cursor
+                    yield SyncCoercingCursor(self, proxy(cursor)) if coerce else cursor
 
         return cast(types.CursorMethodProtocolT, run_query_cursor)
 
@@ -309,7 +315,7 @@ def _bootstrap_default(
             connection: types.ConnectionT = None,
             **kwargs,
         ):
-            async with self.connector.connection(c=connection) as c:
+            async with self.connector.connection(connection=connection) as c:
                 return await func(c, *args, **kwargs)
 
     else:
@@ -321,7 +327,7 @@ def _bootstrap_default(
             connection: types.ConnectionT = None,
             **kwargs,
         ):
-            with self.connector.connection(c=connection) as c:
+            with self.connector.connection(connection=connection) as c:
                 return func(c, *args, **kwargs)
 
     if scalar is False:

@@ -134,3 +134,22 @@ class AIOSQLiteReturningDriverAdaptor(aiosql.adapters.aiosqlite.AioSQLiteAdapter
         cur: aiosqlite.Cursor
         async with conn.execute(sql, parameters) as cur:
             return await cur.fetchone()
+
+
+class _AIOSQLite3CursorProxy:
+    __slots__ = ("_cursor",)
+
+    def __init__(self, cursor: aiosqlite.Cursor):
+        self._cursor = cursor
+
+    def __getattr__(self, item):
+        return self._cursor.__getattribute__(item)
+
+    async def forward(self, n: int, *args, timeout: float = None, **kwargs):
+        pass  # can't scroll sqlite cursors...
+
+    def fetch(self, n: int, *args, timeout: float = None, **kwargs):
+        return self._cursor.fetchmany(n)
+
+    def fetchrow(self, *args, timeout: float = None, **kwargs):
+        return self._cursor.fetchone()

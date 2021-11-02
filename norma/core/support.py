@@ -7,6 +7,7 @@ import inspect
 import functools
 import logging
 import time
+from types import ModuleType
 from typing import (
     Callable,
     Awaitable,
@@ -186,7 +187,7 @@ def _maybe_coerce_bulk_result(
                 self, *args, connection=connection, **kwargs
             )
             if res and coerce:
-                return self.bulk_protocol.transmute(({**r} for r in res))  # type: ignore
+                return self.bulk_protocol.transmute(res)  # type: ignore
             return res
 
     else:
@@ -203,7 +204,7 @@ def _maybe_coerce_bulk_result(
                 self, *args, connection=connection, **kwargs
             )
             if res and coerce:
-                return self.bulk_protocol.transmute(({**r} for r in res))  # type: ignore
+                return self.bulk_protocol.transmute(res)  # type: ignore
             return res
 
     return cast(types.ModelMethodProtocolT, _maybe_coerce_bulk_result_wrapper)
@@ -222,7 +223,7 @@ def _maybe_coerce_result(f: types.QueryMethodProtocolT) -> types.ModelMethodProt
         ) -> Union[types.ModelT, types.ScalarT, None]:
             res = await f(self, *args, connection=connection, **kwargs)
             if res and coerce:
-                return self.protocol.transmute({**res})
+                return self.protocol.transmute(res)
             return res
 
     else:
@@ -237,7 +238,7 @@ def _maybe_coerce_result(f: types.QueryMethodProtocolT) -> types.ModelMethodProt
         ) -> Union[types.ModelT, types.ScalarT, None]:
             res = f(self, *args, connection=connection, **kwargs)
             if res and coerce:
-                return self.protocol.transmute({**res})
+                return self.protocol.transmute(res)
             return res
 
     return cast(types.ModelMethodProtocolT, _maybe_coerce_result_wrapper)
@@ -413,24 +414,44 @@ def get_connector_protocol(
             f"Supported drivers are: {(*_DRIVER_TO_CONNECTOR,)}. Got: {driver!r}"
         )
     modname, cname = _DRIVER_TO_CONNECTOR[driver].rsplit(".", maxsplit=1)
-    try:
-        mod = importlib.import_module(name=modname)
-    except (ImportError, ModuleNotFoundError) as e:
-        raise RuntimeError(
-            f"Couldn't import driver. Is {driver!r} installed in your environment?"
-        ) from e
+    mod = _try_import(modname, driver=driver)
     ctype: Type[types.AnyConnectorProtocolT] = getattr(mod, cname)
     return ctype(**connect_kwargs)  # type: ignore
 
 
-_DRIVER_TO_CONNECTOR: _DriverConnectorMappingT = {
+def get_cursor_proxy(driver: drivers.SupportedDriversT) -> Type:
+    """Get a proxy type which ensures compliance to the defined CursorProtocol."""
+    if driver not in _DRIVER_TO_CURSOR_PROXY:
+        return lambda c: c  # type: ignore
+    modname, cname = _DRIVER_TO_CONNECTOR[driver].rsplit(".", maxsplit=1)
+    mod = _try_import(modname, driver=driver)
+    ctype: Type[types.AnyConnectorProtocolT] = getattr(mod, cname)
+    return ctype
+
+
+def _try_import(modname: str, *, driver: str) -> ModuleType:
+    try:
+        return importlib.import_module(name=modname)
+    except (ImportError, ModuleNotFoundError) as e:
+        raise RuntimeError(
+            f"Couldn't import driver. Is {driver!r} installed in your environment?"
+        ) from e
+
+
+_DRIVER_TO_CONNECTOR: _DriverMappingT = {
     "aiosqlite": "norma.core.drivers.aio.sqlite.AIOSQLiteConnector",
     "asyncpg": "norma.core.drivers.aio.postgres.AsyncPGConnector",
     "psycopg": "norma.core.drivers.sio.postgres.PsycoPGConnector",
     "sqlite": "norma.core.drivers.sio.sqlite.SQLiteConnector",
 }
 
-_DriverConnectorMappingT = Mapping[drivers.SupportedDriversT, str]
+_DRIVER_TO_CURSOR_PROXY: _DriverMappingT = {
+    "aiosqlite": "norma.core.drivers.aio.sqlite._AIOSQLiteCursorProxy",
+    "psycopg": "norma.core.drivers.sio.postgres._PsycoPGCursorProxy",
+    "sqlite": "norma.core.drivers.sio.sqlite._SQLiteCursorProxy",
+}
+
+_DriverMappingT = Mapping[drivers.SupportedDriversT, str]
 
 
 def dumps(o: Any) -> str:
