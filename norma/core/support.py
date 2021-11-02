@@ -423,7 +423,7 @@ def get_cursor_proxy(driver: drivers.SupportedDriversT) -> Type:
     """Get a proxy type which ensures compliance to the defined CursorProtocol."""
     if driver not in _DRIVER_TO_CURSOR_PROXY:
         return lambda c: c  # type: ignore
-    modname, cname = _DRIVER_TO_CONNECTOR[driver].rsplit(".", maxsplit=1)
+    modname, cname = _DRIVER_TO_CURSOR_PROXY[driver].rsplit(".", maxsplit=1)
     mod = _try_import(modname, driver=driver)
     ctype: Type[types.AnyConnectorProtocolT] = getattr(mod, cname)
     return ctype

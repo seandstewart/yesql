@@ -39,7 +39,7 @@ def service(
     connector: types.AnyConnectorProtocolT[types.ConnectionT] = None,
     base_service: Type[BaseQueryService[types.ModelT]] = None,
     **connect_kwargs,
-) -> Union[AsyncQueryService[types.ModelT], SyncQueryService[types.ModelT],]:
+) -> Union[AsyncQueryService[types.ModelT], SyncQueryService[types.ModelT]]:
     """Create and instantiate a Query Service object.
 
     Args:

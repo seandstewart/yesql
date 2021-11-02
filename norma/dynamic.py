@@ -79,16 +79,16 @@ class BaseDynamicQueryLib(Generic[_MT]):
         """Execute any arbitrary query and return the result.
 
         Notes:
-           This method assumes that the result is coerceable into the model bound to
-           the QueryService. If that is not the case, then make sure to pass in
-           `coerce=False` to the call.
+            This method assumes that the result is coerceable into the model bound to
+            the QueryService. If that is not the case, then make sure to pass in
+            `coerce=False` to the call.
 
         Args:
-           query:
+            query:
                Either a SQL string or a pypika Query.
-           *args:
+            *args:
                Any args which should be passed on to the query.
-           connection: optional
+            connection: optional
                A DBAPI connectable to use during executions.
                Whether to coerce the query result into the model bound to the service.
             coerce: defaults True
@@ -96,7 +96,7 @@ class BaseDynamicQueryLib(Generic[_MT]):
             rtype: One of "all", "one", "val"; defaults "all"
                 Fetch all rows, one row, or the first value in the first row.
                 If "val", `coerce` will always evaluate to False.
-           **kwargs:
+            **kwargs:
                Any keyword args to pass on to the query.
         Keyword Args:
            coerce: bool, defaults True
