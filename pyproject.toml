@@ -8,7 +8,7 @@ license = "MIT"
 [tool.poetry.dependencies]
 # Library
 python = "^3.8"
-typical = "^2.7"
+typical = "^2.7.7"
 aiosql = "^3.2.0"
 PyPika = "^0.48.0"
 asyncpg = {version = "^0.24.0", optional = true}
@@ -28,7 +28,7 @@ pytest-asyncio = {version = "^0.15.1", optional = true}
 pytest-cov = {version = "^2.12.1", optional = true}
 pytest-benchmark = {version = "^3.4.1", optional = true}
 types-orjson = {version = "^0.1.1", optional = true}
-psycopg = {extras = ["binary", "ppol"], version = "^3.0b1", optional = true, allow-prereleases = true}
+psycopg = {extras = ["binary", "pool"], version = "^3.0", optional = true}
 
 [tool.poetry.extras]
 asyncpg = ["asyncpg", "orjson"]
@@ -55,7 +55,7 @@ pytest-benchmark = "^3.4.1"
 pre-commit = "^2.13.0"
 asyncpg = "^0.24.0"
 orjson = "^3.6.0"
-psycopg = { extras = ["binary", "pool"], version = "^3.0b1", allow-prereleases = true }
+psycopg = { extras = ["binary", "pool"], version = "^3.0"}
 aiosqlite = "^0.17.0"
 
 
