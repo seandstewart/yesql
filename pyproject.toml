@@ -8,7 +8,7 @@ license = "MIT"
 [tool.poetry.dependencies]
 # Library
 python = "^3.8"
-typical = "^2.7.7"
+typical = "^2.7.9"
 aiosql = "^3.2.0"
 PyPika = "^0.48.0"
 asyncpg = {version = "^0.24.0", optional = true}

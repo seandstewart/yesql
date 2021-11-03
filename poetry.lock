@@ -733,7 +733,7 @@ python-versions = "*"
 
 [[package]]
 name = "typical"
-version = "2.7.7"
+version = "2.7.9"
 description = "Typical: Python's Typing Toolkit."
 category = "main"
 optional = false
@@ -825,7 +825,7 @@ tests = ["pytest", "pytest-asyncio", "pytest-cov", "pytest-benchmark"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "05862c92c7e50b81bc2476d00d07b93682e88805bca265c074f1aad6940617e6"
+content-hash = "b413aa3ecd5491b6865641242933b9af98ac601de4b637b8e1d315915342c5d9"
 
 [metadata.files]
 aiosql = [
@@ -1354,8 +1354,8 @@ types-orjson = [
     {file = "types_orjson-0.1.1-py2.py3-none-any.whl", hash = "sha256:92f85986261ea1a5cb215e4b35e4016631d35163a372f023918750f340ea737f"},
 ]
 typical = [
-    {file = "typical-2.7.7-py3-none-any.whl", hash = "sha256:7592c60dd96eb1332b6a86e3af179874daeb06fe327e5fb39c8c16d88e18d7a3"},
-    {file = "typical-2.7.7.tar.gz", hash = "sha256:ffc0b8d0adef53b8b8dcf26b4bf00dbc387750dbeafddfc71c1fae3d3b16922b"},
+    {file = "typical-2.7.9-py3-none-any.whl", hash = "sha256:3168619d1923ecf59786c8b5475c777d1280a6856563a767935cd04bb8be8041"},
+    {file = "typical-2.7.9.tar.gz", hash = "sha256:965da0a9418d7bf99142a8114eb13065467db8fdd091135d96407f0e53f40b48"},
 ]
 typing-extensions = [
     {file = "typing_extensions-3.10.0.2-py2-none-any.whl", hash = "sha256:d8226d10bc02a29bcc81df19a26e56a9647f8b0a6d4a83924139f4a8b01f17b7"},
