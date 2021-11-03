@@ -72,7 +72,7 @@ class BaseQueryService(types.ServiceProtocolT[_MT]):
     bulk_protocol: ClassVar[typic.SerdeProtocol[Iterable[_MT]]]
     queries: ClassVar[aiosql.aiosql.Queries]
 
-    __slots__ = ("connector",)
+    __slots__ = ("connector", "_managed")
 
     __getattr__: Callable[..., types.QueryMethodProtocolT[_MT]]
 
@@ -85,6 +85,7 @@ class BaseQueryService(types.ServiceProtocolT[_MT]):
         self.connector = connector or support.get_connector_protocol(
             self.metadata.__driver__, **connect_kwargs
         )
+        self._managed = connector is None
 
     def __init_subclass__(cls, **kwargs):
         if cls.__name__ in {"AsyncQueryService", "SyncQueryService"}:
@@ -198,27 +199,21 @@ class BaseQueryService(types.ServiceProtocolT[_MT]):
 
             setattr(cls, qname, _wrap_query)
 
+    @classmethod
+    def _get_explain_selector(cls, op: str):
+        return (
+            cls.queries.driver_adapter.select_one
+            if op == cls.connector.EXPLAIN_PREFIX
+            else cls.queries.driver_adapter.select_value
+        )
 
-class AsyncQueryService(BaseQueryService[_MT]):
-    """An event-loop compatible query service (async/await)."""
-
-    connector: types.AsyncConnectorProtocolT
-
-    async def __aenter__(self):
-        await self.connector.initialize()
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        return
-
-    @support.retry  # type: ignore
-    async def count(
+    def count(
         self,
         query: Union[str, Callable],
         *args,
         connection: types.ConnectionT = None,
         **kwargs,
-    ) -> int:
+    ):
         """Get the number of rows returned by this query.
 
         Args:
@@ -238,16 +233,9 @@ class AsyncQueryService(BaseQueryService[_MT]):
         name = query if isinstance(query, str) else query.__name__
         queryfn: aiosql.types.QueryFn = getattr(self.queries, name)
         sql = f"SELECT count(*) FROM ({queryfn.sql.rstrip(';')}) AS q;"
-        async with self.connector.connection(connection=connection) as c:
-            return await self.queries.driver_adapter.select_value(
-                c,
-                query_name=name,
-                sql=sql,
-                parameters=kwargs or args,
-            )
+        return self._do_count(connection, name, sql, kwargs or args)
 
-    @support.retry  # type: ignore
-    async def explain(
+    def explain(
         self,
         query: Union[str, Callable],
         *args,
@@ -255,7 +243,7 @@ class AsyncQueryService(BaseQueryService[_MT]):
         connection: types.ConnectionT = None,
         format: Optional[ExplainFormatT] = "json",
         **kwargs,
-    ) -> Union[types.ScalarT, str]:
+    ):
         """Get profiling information from the database about your query.
 
         EXPLAIN is a useful tool to debug how the RDBMS's query optimizer will execute
@@ -293,27 +281,75 @@ class AsyncQueryService(BaseQueryService[_MT]):
         """
         name = query if isinstance(query, str) else query.__name__
         queryfn: aiosql.types.QueryFn = getattr(self.queries, name)
+        op = self.connector.get_explain_command(analyze, format)
+        selector = self._get_explain_selector(op)
+        sql = f"{op}{queryfn.sql}"
+        return self._do_explain(connection, name, sql, selector, args or kwargs)
+
+    def _do_count(
+        self,
+        connection: types.ConnectionT,
+        name: str,
+        sql: str,
+        parameters: dict | tuple,
+    ):
+        ...
+
+    def _do_explain(
+        self,
+        connection: types.ConnectionT,
+        name: str,
+        sql: str,
+        selector: Callable,
+        parameters: dict | tuple,
+    ):
+        ...
+
+
+class AsyncQueryService(BaseQueryService[_MT]):
+    """An event-loop compatible query service (async/await)."""
+
+    connector: types.AsyncConnectorProtocolT
+
+    async def __aenter__(self):
+        await self.connector.initialize()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if self._managed:
+            await self.connector.close()
+        return
+
+    @support.retry  # type: ignore
+    async def _do_count(
+        self,
+        connection: types.ConnectionT,
+        name: str,
+        sql: str,
+        parameters: dict | tuple,
+    ) -> int:
+        async with self.connector.connection(connection=connection) as c:
+            return await self.queries.driver_adapter.select_value(
+                c,
+                query_name=name,
+                sql=sql,
+                parameters=parameters,
+            )
+
+    @support.retry  # type: ignore
+    async def _do_explain(
+        self,
+        connection: types.ConnectionT,
+        name: str,
+        sql: str,
+        selector: Callable,
+        parameters: dict | tuple,
+    ) -> Union[types.ScalarT, str]:
         c: types.ConnectionT
         async with self.connector.transaction(
             connection=connection, rollback=True
         ) as c:
-            op = self.connector.get_explain_command(analyze, format)
-            if op == self.connector.EXPLAIN_PREFIX:
-                selector, sql = (
-                    self.queries.driver_adapter.select_one,
-                    f"{op}{queryfn.sql}",
-                )
-            else:
-                selector, sql = (
-                    self.queries.driver_adapter.select_value,
-                    f"{op}{queryfn.sql}",
-                )
-            return await selector(
-                c,
-                query_name=name,
-                sql=sql,
-                parameters=kwargs or args,
-            )
+            return await selector(c, query_name=name, sql=sql, parameters=parameters)
 
 
 class SyncQueryService(BaseQueryService[_MT]):
@@ -331,106 +367,34 @@ class SyncQueryService(BaseQueryService[_MT]):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        if self._managed:
+            self.connector.close()
         return
 
-    @support.retry
-    def count(
+    @support.retry  # type: ignore
+    def _do_count(
         self,
-        query: Union[str, Callable],
-        *args,
-        connection: types.ConnectionT = None,
-        **kwargs,
+        connection: Optional[types.ConnectionT],
+        name: str,
+        sql: str,
+        parameters: dict | tuple,
     ) -> int:
-        """Get the number of rows returned by this query.
-
-        Args:
-            query:
-                Either the query function, or the name of the query in your library
-                which you wish to analyze.
-            *args:
-                Any positional arguments which the query requires.
-            connection: optional
-                A raw DBAPI connection object.
-            **kwargs:
-                Any keyword-arguments you'll pass on to the query.
-
-        Returns:
-            The number of rows.
-        """
-        name = query if isinstance(query, str) else query.__name__
-        queryfn: aiosql.types.QueryFn = getattr(self.queries, name)
-        sql = f"SELECT count(*) FROM ({queryfn.sql.rstrip(';')}) AS q;"
         with self.connector.connection(connection=connection) as c:
             return self.queries.driver_adapter.select_value(
                 c,
                 query_name=name,
                 sql=sql,
-                parameters=kwargs or args,
+                parameters=parameters,
             )
 
-    @support.retry
-    def explain(
+    @support.retry  # type: ignore
+    def _do_explain(
         self,
-        query: Union[str, Callable],
-        *args,
-        analyze: bool = True,
-        connection: types.ConnectionT = None,
-        format: Optional[ExplainFormatT] = "json",
-        **kwargs,
+        connection: Optional[types.ConnectionT],
+        name: str,
+        sql: str,
+        selector: Callable,
+        parameters: dict | tuple,
     ) -> Union[types.ScalarT, str]:
-        """Get profiling information from the database about your query.
-
-        EXPLAIN is a useful tool to debug how the RDBMS's query optimizer will execute
-        your query in the database so that you can tune either it or the schema for
-        your use-case.
-
-        Notes:
-            We run our EXPLAIN under a transaction which is automatically rolled back,
-            so this operation is considered "safe" to use with queries which would
-            result in mutation.
-
-            The exact command run is determined by the ConnectorProtocol's
-            `get_explain_command`, which will return a compliant command for the
-            selected dialect. Consult your dialect's documentation for more information.
-
-        Args:
-            query:
-                Either the query function, or the name of the query in your library
-                which you wish to analyze.
-            *args:
-                Any positional arguments which the query requires.
-            analyze: defaults True
-                If true and supported by your dialect, run `EXPLAIN ANALYZE`,
-                else run `EXPLAIN`. Consult the documentation for your dialect for an
-                in-depth explanation of the two options.
-            connection: optional
-                A raw DBAPI connection object.
-            format: defaults "json"
-                If supported, the output format for the EXPLAIN result.
-                Consult the documentation for your dialect to get a full list of options.
-            **kwargs:
-                Any keyword-arguments you'll pass on to the query.
-        Returns:
-            The raw results of the EXPLAIN query.
-        """
-        name = query if isinstance(query, str) else query.__name__
-        queryfn: aiosql.types.QueryFn = getattr(self.queries, name)
-        c: types.ConnectionT
         with self.connector.transaction(connection=connection, rollback=True) as c:
-            op = self.connector.get_explain_command(analyze, format)
-            if op == self.connector.EXPLAIN_PREFIX:
-                selector, sql = (
-                    self.queries.driver_adapter.select_one,
-                    f"{op}{queryfn.sql}",
-                )
-            else:
-                selector, sql = (
-                    self.queries.driver_adapter.select_value,
-                    f"{op}{queryfn.sql}",
-                )
-            return selector(
-                c,
-                query_name=name,
-                sql=sql,
-                parameters=kwargs or args,
-            )
+            return selector(c, query_name=name, sql=sql, parameters=parameters)
