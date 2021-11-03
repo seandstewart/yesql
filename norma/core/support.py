@@ -448,7 +448,7 @@ _DRIVER_TO_CONNECTOR: _DriverMappingT = {
 _DRIVER_TO_CURSOR_PROXY: _DriverMappingT = {
     "aiosqlite": "norma.core.drivers.aio.sqlite._AIOSQLiteCursorProxy",
     "psycopg": "norma.core.drivers.sio.postgres._PsycoPGCursorProxy",
-    "sqlite": "norma.core.drivers.sio.sqlite._SQLiteCursorProxy",
+    "sqlite": "norma.core.drivers.sio.sqlite._SQLite3CursorProxy",
 }
 
 _DriverMappingT = Mapping[drivers.SupportedDriversT, str]

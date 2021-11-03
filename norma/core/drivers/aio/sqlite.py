@@ -136,7 +136,7 @@ class AIOSQLiteReturningDriverAdaptor(aiosql.adapters.aiosqlite.AioSQLiteAdapter
             return await cur.fetchone()
 
 
-class _AIOSQLite3CursorProxy:
+class _AIOSQLiteCursorProxy:
     __slots__ = ("_cursor",)
 
     def __init__(self, cursor: aiosqlite.Cursor):
