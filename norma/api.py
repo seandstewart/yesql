@@ -8,9 +8,10 @@ from typing import Union, Type, Tuple, Any
 import inflection
 import typic
 
-from .core import drivers, support, types
+from .core import support, types
 from .core.service import *
 from .core.middleware import *
+from . import drivers
 
 
 __all__ = (

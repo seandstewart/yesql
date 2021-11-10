@@ -18,13 +18,17 @@ from typing import (
     TypeVar,
     Dict,
     Tuple,
+    TYPE_CHECKING,
 )
 
 import aiosql
 import inflection
 import typic
 from aiosql.types import QueryFn
-from . import drivers, support, types, bootstrap, inspection
+from . import support, types, bootstrap, inspection
+
+if TYPE_CHECKING:
+    from norma import drivers
 
 __all__ = (
     "AsyncQueryService",

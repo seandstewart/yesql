@@ -24,12 +24,16 @@ from typing import (
     NoReturn,
     ContextManager,
     Any,
+    TYPE_CHECKING,
 )
 
 import orjson
 import typic
 
-from . import types, drivers
+from . import types
+
+if TYPE_CHECKING:
+    from norma import drivers
 
 __all__ = (
     "coerceable",
@@ -299,7 +303,7 @@ def retry(
                 except (*_errors, *self.connector.TRANSIENT) as e:
                     _logger.info(
                         "Got a watched error. Entering retry loop. "
-                        "%(error): %(exception)",
+                        "%(error)s: %(exception)s",
                         error=e.__class__.__name__,
                         exception=str(e),
                     )
@@ -419,13 +423,13 @@ def get_connector_protocol(
     return ctype(**connect_kwargs)  # type: ignore
 
 
-def get_cursor_proxy(driver: drivers.SupportedDriversT) -> Type:
+def get_cursor_proxy(driver: drivers.SupportedDriversT) -> Type[types.CursorProtocolT]:
     """Get a proxy type which ensures compliance to the defined CursorProtocol."""
     if driver not in _DRIVER_TO_CURSOR_PROXY:
         return lambda c: c  # type: ignore
     modname, cname = _DRIVER_TO_CURSOR_PROXY[driver].rsplit(".", maxsplit=1)
     mod = _try_import(modname, driver=driver)
-    ctype: Type[types.AnyConnectorProtocolT] = getattr(mod, cname)
+    ctype: Type[types.CursorProtocolT] = getattr(mod, cname)
     return ctype
 
 
@@ -438,20 +442,18 @@ def _try_import(modname: str, *, driver: str) -> ModuleType:
         ) from e
 
 
-_DRIVER_TO_CONNECTOR: _DriverMappingT = {
-    "aiosqlite": "norma.core.drivers.aio.sqlite.AIOSQLiteConnector",
-    "asyncpg": "norma.core.drivers.aio.postgres.AsyncPGConnector",
-    "psycopg": "norma.core.drivers.sio.postgres.PsycoPGConnector",
-    "sqlite": "norma.core.drivers.sio.sqlite.SQLiteConnector",
+_DRIVER_TO_CONNECTOR: Mapping[drivers.SupportedDriversT, str] = {
+    "aiosqlite": "norma.drivers.aio.sqlite.AIOSQLiteConnector",
+    "asyncpg": "norma.drivers.aio.postgres.AsyncPGConnector",
+    "psycopg": "norma.drivers.sio.postgres.PsycoPGConnector",
+    "sqlite": "norma.drivers.sio.sqlite.SQLiteConnector",
 }
 
-_DRIVER_TO_CURSOR_PROXY: _DriverMappingT = {
-    "aiosqlite": "norma.core.drivers.aio.sqlite._AIOSQLiteCursorProxy",
-    "psycopg": "norma.core.drivers.sio.postgres._PsycoPGCursorProxy",
-    "sqlite": "norma.core.drivers.sio.sqlite._SQLite3CursorProxy",
+_DRIVER_TO_CURSOR_PROXY: Mapping[drivers.SupportedDriversT, str] = {
+    "aiosqlite": "norma.drivers.aio.sqlite._AIOSQLiteCursorProxy",
+    "psycopg": "norma.drivers.sio.postgres._PsycoPGCursorProxy",
+    "sqlite": "norma.drivers.sio.sqlite._SQLite3CursorProxy",
 }
-
-_DriverMappingT = Mapping[drivers.SupportedDriversT, str]
 
 
 def dumps(o: Any) -> str:
