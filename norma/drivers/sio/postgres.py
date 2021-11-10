@@ -72,7 +72,7 @@ class PsycoPGConnector(types.SyncConnectorProtocolT[psycopg.Connection]):
 
     @contextlib.contextmanager
     def connection(
-        self, *, timeout: int = 10, connection: psycopg.Connection = None
+        self, *, timeout: float = 10, connection: psycopg.Connection = None
     ) -> Iterator[psycopg.Connection]:
         self.initialize()
         if connection:
@@ -85,19 +85,21 @@ class PsycoPGConnector(types.SyncConnectorProtocolT[psycopg.Connection]):
     def transaction(
         self,
         *,
-        timeout: int = 10,
+        timeout: float = 10,
         connection: psycopg.Connection = None,
+        savepoint_name: Optional[str] = None,
         rollback: bool = False,
     ) -> Iterator[psycopg.Connection]:
         conn: psycopg.Connection
         with self.connection(timeout=timeout, connection=connection) as conn:
-            with conn.transaction(force_rollback=rollback):
+            with conn.transaction(
+                savepoint_name=savepoint_name, force_rollback=rollback
+            ):
                 yield conn
 
-    def close(self, timeout: int = 10):
+    def close(self, timeout: float = 10):
         with _lock():
-            if self.open:
-                self.pool.close(timeout=timeout)
+            self.pool.close(timeout=timeout)
 
     @property
     def open(self) -> bool:
