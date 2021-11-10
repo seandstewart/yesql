@@ -63,7 +63,7 @@ class SQLiteConnector(types.SyncConnectorProtocolT[sqlite3.Connection]):
 
     @contextlib.contextmanager
     def connection(
-        self, *, timeout: int = 10, connection: sqlite3.Connection = None
+        self, *, timeout: float = 10, connection: sqlite3.Connection = None
     ) -> Iterator[sqlite3.Connection]:
         self.initialize()
         if connection:
@@ -74,14 +74,14 @@ class SQLiteConnector(types.SyncConnectorProtocolT[sqlite3.Connection]):
             with sqlite3.connect(**self.options) as conn:
                 conn.row_factory = sqlite3.Row
                 yield conn
-                if conn.in_transaction:
+                if connection is None and conn.in_transaction:
                     conn.rollback()
 
     @contextlib.contextmanager
     def transaction(
         self,
         *,
-        timeout: int = 10,
+        timeout: float = 10,
         connection: sqlite3.Connection = None,
         rollback: bool = False,
     ) -> Iterator[sqlite3.Connection]:
@@ -91,7 +91,7 @@ class SQLiteConnector(types.SyncConnectorProtocolT[sqlite3.Connection]):
             if not rollback:
                 conn.commit()
 
-    def close(self, timeout: int = 10):
+    def close(self, timeout: float = 10):
         with _lock():
             self.initialized = False
 
