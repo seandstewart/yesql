@@ -36,7 +36,16 @@ psycopg = ["psycopg", "orjson"]
 aiosqlite = ["aiosqlite"]
 docs = ["mkdocs", "mkdocs-material", "mkdocs-awesome-pages-plugin"]
 lint = ["mypy", "black", "flake8", "types-orjson"]
-tests = ["pytest", "pytest-asyncio", "pytest-cov", "pytest-benchmark"]
+tests = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "pytest-benchmark",
+    "asyncpg",
+    "orjson",
+    "psycopg",
+    "aiosqlite",
+]
 
 [tool.poetry.dev-dependencies]
 # Docs
