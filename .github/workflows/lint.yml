@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.10"]
+        python-version: ["3.9"]
 
     steps:
     - uses: actions/checkout@v2
@@ -40,8 +40,6 @@ jobs:
 
     - name: Set Poetry config
       run: |
-        # https://github.com/python-poetry/poetry/issues/4210#issuecomment-965054779
-        pip install -U cachecontrol
         poetry config virtualenvs.in-project true
 
     - name: Install Dependencies (with Lint)
