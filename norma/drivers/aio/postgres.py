@@ -70,12 +70,12 @@ class AsyncPGConnector(types.AsyncConnectorProtocolT[asyncpg.Connection]):
         if self.initialized:
             return
         async with _lock():
-            await self.pool
+            await self.pool.__aenter__()
             self.initialized = True
 
     @contextlib.asynccontextmanager
     async def connection(
-        self, *, timeout: int = 10, connection: asyncpg.Connection = None
+        self, *, timeout: float = 10, connection: asyncpg.Connection = None
     ) -> AsyncIterator[asyncpg.Connection]:
         await self.initialize()
         if connection:
@@ -88,31 +88,25 @@ class AsyncPGConnector(types.AsyncConnectorProtocolT[asyncpg.Connection]):
     async def transaction(
         self,
         *,
-        timeout: int = 10,
+        timeout: float = 10,
         connection: asyncpg.Connection = None,
         rollback: bool = False,
+        isolation: Optional[str] = None,
+        readonly: bool = False,
+        deferrable: bool = False,
     ) -> AsyncIterator[asyncpg.Connection]:
         conn: asyncpg.Connection
         async with self.connection(timeout=timeout, connection=connection) as conn:
-            if rollback:
-                t: asyncpg.transaction.Transaction = conn.transaction()
-                await t.start()
-                try:
-                    yield conn
-                finally:
-                    try:
-                        await t.rollback()
-                    except asyncpg.InterfaceError:
-                        # The transaction is either closed or errored already. Move on.
-                        pass
-            else:
-                async with conn.transaction():
-                    yield conn
+            tctx = RollbackTransaction if rollback else asyncpg.transaction.Transaction
+            async with tctx(conn, isolation, readonly, deferrable):
+                yield conn
 
-    async def close(self, timeout: int = 10):
-        if self.open:
-            async with _lock():
+    async def close(self, timeout: float = 10):
+        async with _lock():
+            try:
                 await asyncio.wait_for(self.pool.close(), timeout=timeout)
+            except asyncio.TimeoutError:
+                self.pool.terminate()
 
     @property
     def open(self) -> bool:
@@ -135,6 +129,45 @@ def _lock() -> asyncio.Lock:
         lock = asyncio.Lock()
         LOCK.set(lock)
     return lock
+
+
+class RollbackTransaction:
+    """A transaction proxy which rolls back the owned transaction on exit."""
+
+    __slots__ = ("transaction",)
+
+    def __init__(
+        self,
+        connection: asyncpg.Connection,
+        isolation: Optional[str] = None,
+        readonly: bool = False,
+        deferrable: bool = False,
+    ):
+        self.transaction = connection.transaction(
+            isolation=isolation,
+            readonly=readonly,
+            deferrable=deferrable,
+        )
+
+    def __aenter__(self):
+        return self.transaction.__aenter__()
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None:
+            exc_type = _Rollback
+            exc_val = _Rollback("Client-requested rollback.")
+            try:
+                await self.transaction.__aexit__(exc_type, exc_val, exc_tb)
+            except asyncpg.InterfaceError:
+                # The transaction is either closed or errored already. Move on.
+                pass
+        return await self.transaction.__aexit__(exc_type, exc_val, exc_tb)
+
+
+class _Rollback(Exception):
+    """A fake exception to pass on to the asyncpg to trigger a rollback on context exit."""
+
+    ...
 
 
 @typic.settings(prefix="POSTGRES_POOL_", aliases={"database_url": "postgres_pool_dsn"})
