@@ -40,6 +40,8 @@ jobs:
 
     - name: Set Poetry config
       run: |
+        # https://github.com/python-poetry/poetry/issues/4210#issuecomment-965054779
+        pip install -U cachecontrol
         poetry config virtualenvs.in-project true
 
     - name: Install Dependencies (with Lint)
