@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import contextlib
 import warnings
 from typing import (
@@ -20,10 +22,11 @@ from typing import (
 
 import pypika
 
-from norma.core import support, types, bootstrap, service
+from norma.core import support, types, bootstrap
 
 if TYPE_CHECKING:
     from norma import drivers
+    from norma.core import service  # noqa: F401
 
 __all__ = ("AsyncDynamicQueryLib", "SyncDynamicQueryLib")
 
@@ -58,7 +61,7 @@ class BaseDynamicQueryLib(Generic[_MT]):
 
     def __init__(
         self,
-        service: types.ServiceProtocolT[_MT],
+        service: types.ServiceProtocolT[_MT],  # noqa: F811
         *,
         schema: str = None,
     ):
