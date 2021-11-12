@@ -15,11 +15,15 @@ from typing import (
     Tuple,
     Literal,
     Callable,
+    TYPE_CHECKING,
 )
 
 import pypika
 
-from norma.core import support, types, drivers, bootstrap, service
+from norma.core import support, types, bootstrap, service
+
+if TYPE_CHECKING:
+    from norma import drivers
 
 __all__ = ("AsyncDynamicQueryLib", "SyncDynamicQueryLib")
 
@@ -244,7 +248,6 @@ class BaseDynamicQueryLib(Generic[_MT]):
         *,
         connection: _ConnT = None,
         coerce: bool = True,
-        rtype: Literal["all", "one", "val"] = "all",
     ) -> Union[_ReturnT, Awaitable[_ReturnT]]:
         ...
 

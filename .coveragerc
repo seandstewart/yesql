@@ -7,4 +7,4 @@ omit =
     tests*
     benchmark*
     docs*
-    mypy.py
+    */__init__.py

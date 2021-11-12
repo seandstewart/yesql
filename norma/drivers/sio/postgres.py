@@ -196,7 +196,8 @@ class _PsycoPGCursorProxy:
         return self._cursor.__getattribute__(item)
 
     def forward(self, n: int, *args, timeout: float = None, **kwargs):
-        return self._cursor.scroll(value=n, *args, **kwargs)
+        kwargs["value"] = n
+        return self._cursor.scroll(*args, **kwargs)
 
     def fetch(self, n: int, *args, timeout: float = None, **kwargs):
         return self._cursor.fetchmany(n)

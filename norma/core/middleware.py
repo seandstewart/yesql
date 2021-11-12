@@ -19,7 +19,10 @@ def middleware(*names: str):
     Examples:
 
         >>> import dataclasses
+        >>> import pathlib
         >>> import norma
+        >>> from tests.unit.queries import QUERIES
+        >>>
         >>>
         >>> @dataclasses.dataclass
         ... class Foo:
@@ -27,6 +30,9 @@ def middleware(*names: str):
         ...
         >>>
         >>> class FooService(norma.AsyncQueryService[Foo]):
+        ...
+        ...     class metadata(norma.QueryMetadata):
+        ...         __querylib__ = QUERIES
         ...
         ...     @norma.middleware("get", "get_cursor")
         ...     async def intercept_gets(
