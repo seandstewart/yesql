@@ -66,6 +66,8 @@ class PsycoPGConnector(types.SyncConnectorProtocolT[psycopg.Connection]):
         if self.initialized:
             return
         with _lock():
+            if self.initialized:
+                return
             self.pool = create_pool(**self.pool_kwargs)
             self.pool.kwargs.setdefault("row_factory", pgrows.namedtuple_row)
             self.initialized = True

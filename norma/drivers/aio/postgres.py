@@ -70,6 +70,8 @@ class AsyncPGConnector(types.AsyncConnectorProtocolT[asyncpg.Connection]):
         if self.initialized:
             return
         async with _lock():
+            if self.initialized:
+                return
             await self.pool.__aenter__()
             self.initialized = True
 
