@@ -26,6 +26,7 @@ from typing import (
     Any,
     TYPE_CHECKING,
 )
+from unittest import mock
 
 import orjson
 import typic
@@ -176,7 +177,7 @@ def coerceable(func=None, *, bulk=False):
 def _maybe_coerce_bulk_result(
     f: types.ScalarBulkMethodProtocolT,
 ) -> types.ModelBulkMethodProtocolT:
-    if inspect.iscoroutinefunction(inspect.unwrap(f)):
+    if _should_await(f):
         af = cast(Callable[..., Awaitable], f)
 
         @functools.wraps(af)
@@ -215,7 +216,7 @@ def _maybe_coerce_bulk_result(
 
 
 def _maybe_coerce_result(f: types.QueryMethodProtocolT) -> types.ModelMethodProtocolT:
-    if inspect.iscoroutinefunction(inspect.unwrap(f)):
+    if _should_await(f):
 
         @functools.wraps(f)  # type: ignore
         async def _maybe_coerce_result_wrapper(
@@ -248,6 +249,13 @@ def _maybe_coerce_result(f: types.QueryMethodProtocolT) -> types.ModelMethodProt
     return cast(types.ModelMethodProtocolT, _maybe_coerce_result_wrapper)
 
 
+def _should_await(f):
+    unwrapped = inspect.unwrap(f)
+    return inspect.iscoroutinefunction(unwrapped) or issubclass(
+        unwrapped.__class__, mock.AsyncMock
+    )
+
+
 def retry(
     func: Union[Callable[..., Awaitable[_T]], Callable[..., _T]] = None,
     /,
@@ -267,8 +275,7 @@ def retry(
         _errors=errors,
     ):
         _logger = logging.getLogger(getattr(func_, "__module__", __name__))
-        ufunc = inspect.unwrap(func_)
-        if inspect.iscoroutinefunction(ufunc):
+        if _should_await(func_):
             afunc = cast(Callable[..., Awaitable[_T]], func_)
 
             @functools.wraps(afunc)

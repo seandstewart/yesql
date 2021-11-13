@@ -62,6 +62,7 @@ class TestPsycoPGConnector:
         connector: postgres.PsycoPGConnector, MockPsycoPGPool
     ):
         # Given
+        MockPsycoPGPool.reset_mock()
         connector.initialized = False
         # When
         with concurrent.futures.ThreadPoolExecutor() as pool:
