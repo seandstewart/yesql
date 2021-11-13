@@ -132,8 +132,8 @@ class TestRetry:
     @pytest.mark.parametrize(
         argnames="func",
         argvalues=[
-            mock.MagicMock(side_effect=[TestableError, {"bar": 1}]),
-            mock.AsyncMock(side_effect=[TestableError, {"bar": 1}]),
+            mock.MagicMock(side_effect=[TestableError, TestableError, {"bar": 1}]),
+            mock.AsyncMock(side_effect=[TestableError, TestableError, {"bar": 1}]),
         ],
     )
     async def test_retry_succeeds(func):
