@@ -62,7 +62,6 @@ class TestPsycoPGConnector:
         connector: postgres.PsycoPGConnector, MockPsycoPGPool
     ):
         # Given
-        current_calls = MockPsycoPGPool.call_count
         connector.initialized = False
         # When
         with concurrent.futures.ThreadPoolExecutor() as pool:
@@ -76,7 +75,7 @@ class TestPsycoPGConnector:
 
         concurrent.futures.wait(futs)
         # Then
-        assert MockPsycoPGPool.call_count - current_calls == 1
+        assert MockPsycoPGPool.call_count == 1
 
     @staticmethod
     def test_connection(connector: postgres.PsycoPGConnector):

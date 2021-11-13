@@ -14,9 +14,7 @@ import typic
 
 from norma.core import types, support
 
-LOCK: contextvars.ContextVar[Optional[threading.Lock]] = contextvars.ContextVar(
-    "pg_lock", default=None
-)
+LOCK = threading.Lock()
 CONNECTOR: contextvars.ContextVar[Optional[PsycoPGConnector]] = contextvars.ContextVar(
     "pg_connector", default=None
 )
@@ -38,7 +36,7 @@ def teardown():
 
 
 class PsycoPGConnector(types.SyncConnectorProtocolT[psycopg.Connection]):
-    """A simple connector for asyncpg."""
+    """A connector for psycopg which meets the `types.ConnectorProtocol` contract."""
 
     TRANSIENT = (
         psycopg.OperationalError,
@@ -120,10 +118,7 @@ class PsycoPGConnector(types.SyncConnectorProtocolT[psycopg.Connection]):
 
 
 def _lock() -> threading.Lock:
-    if (lock := LOCK.get()) is None:
-        lock = threading.Lock()
-        LOCK.set(lock)
-    return lock
+    return LOCK
 
 
 @typic.settings(
@@ -218,3 +213,4 @@ def _init_psycopg():
 
 
 _init_psycopg()  # naughty naughty...
+_lock()
