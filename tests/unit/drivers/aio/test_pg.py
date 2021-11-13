@@ -9,35 +9,6 @@ from norma.drivers.aio import postgres
 pytestmark = pytest.mark.asyncio
 
 
-@pytest.fixture(scope="module", autouse=True)
-def MockAsyncPGConnection():
-    with mock.patch("asyncpg.Connection", autospec=True) as mconn:
-        with mock.patch("asyncpg.connect", autospec=True) as mmconn:
-            mmconn.return_value = mconn.return_value
-            yield mconn
-
-
-@pytest.fixture(scope="module", autouse=True)
-def MockAsyncPGTransaction(MockAsyncPGConnection):
-    with mock.patch(
-        "asyncpg.connection.transaction.Transaction", autospec=True
-    ) as mtran:
-        MockAsyncPGConnection.return_value.transaction.return_value = mtran.return_value
-        yield mtran
-
-
-@pytest.fixture(scope="module", autouse=True)
-def MockAsyncPGPool(MockAsyncPGConnection):
-    conn = MockAsyncPGConnection.return_value
-    with mock.patch("asyncpg.Pool", autospec=True) as mpool:
-        inst = mpool.return_value
-        inst.__aenter__ = mock.AsyncMock(return_value=inst)
-        inst.acquire.return_value.__aenter__.return_value = conn
-        with mock.patch("asyncpg.create_pool", autospec=True) as mmpool:
-            mmpool.return_value = inst
-            yield mpool
-
-
 @pytest.fixture(autouse=True)
 def connection(MockAsyncPGConnection, MockAsyncPGPool, MockAsyncPGTransaction):
     conn = MockAsyncPGConnection.return_value

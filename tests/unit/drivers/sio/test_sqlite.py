@@ -1,5 +1,4 @@
 import concurrent.futures
-from unittest import mock
 
 import sqlite3
 import pytest
@@ -7,16 +6,6 @@ import pytest
 from norma.drivers.sio import sqlite
 
 pytestmark = pytest.mark.asyncio
-
-
-@pytest.fixture(scope="module", autouse=True)
-def MockSQLiteConnection():
-    with mock.patch("sqlite3.Connection", autospec=True) as mconn:
-        inst = mconn.return_value
-        inst.__enter__.return_value = inst
-        with mock.patch("sqlite3.connect", autospec=True) as mmconn:
-            mmconn.return_value = inst
-            yield mconn
 
 
 @pytest.fixture(autouse=True)

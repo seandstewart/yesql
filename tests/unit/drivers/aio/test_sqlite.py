@@ -1,5 +1,4 @@
 import asyncio
-from unittest import mock
 
 import aiosqlite
 import pytest
@@ -7,17 +6,6 @@ import pytest
 from norma.drivers.aio import sqlite
 
 pytestmark = pytest.mark.asyncio
-
-
-@pytest.fixture(scope="module", autouse=True)
-def MockAIOSQLiteConnection():
-    with mock.patch("aiosqlite.Connection", autospec=True) as mconn:
-        inst = mconn.return_value
-        inst.__aenter__.return_value = inst
-        inst.execute.side_effect = mock.AsyncMock()
-        with mock.patch("aiosqlite.connect", autospec=True) as mmconn:
-            mmconn.return_value = inst
-            yield mconn
 
 
 @pytest.fixture(autouse=True)

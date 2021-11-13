@@ -8,34 +8,9 @@ import pytest
 from norma.drivers.sio import postgres
 
 
-@pytest.fixture(scope="module", autouse=True)
-def MockPsycoPGConnection():
-    with mock.patch("psycopg.Connection", autospec=True) as mconn:
-        with mock.patch("psycopg.connect", autospec=True) as mmconn:
-            mmconn.return_value = mconn.return_value
-            yield mconn
-
-
-@pytest.fixture(scope="module", autouse=True)
-def MockPsycoPGTransaction(MockPsycoPGConnection):
-    with mock.patch("psycopg.transaction.Transaction", autospec=True) as mtran:
-        MockPsycoPGConnection.return_value.transaction.return_value = mtran.return_value
-        yield mtran
-
-
-@pytest.fixture(scope="module", autouse=True)
-def MockPsycoPGPool(MockPsycoPGConnection):
-    conn = MockPsycoPGConnection.return_value
-    with mock.patch("psycopg_pool.ConnectionPool", autospec=True) as mpool:
-        inst = mpool.return_value
-        inst.kwargs = {}
-        inst.__enter__.return_value = inst
-        inst.connection.return_value.__enter__.return_value = conn
-        yield mpool
-
-
 @pytest.fixture(autouse=True)
 def pool(MockPsycoPGPool):
+    MockPsycoPGPool.reset_mock()
     pool = MockPsycoPGPool.return_value
     yield pool
     MockPsycoPGPool.reset_mock()
