@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
+import dataclasses
 import importlib
 import inspect
 import functools
-import logging
 import time
+import typing
 from types import ModuleType
 from typing import (
     Callable,
@@ -26,7 +26,6 @@ from typing import (
     Any,
     TYPE_CHECKING,
 )
-from unittest import mock
 
 import orjson
 import typic
@@ -177,7 +176,7 @@ def coerceable(func=None, *, bulk=False):
 def _maybe_coerce_bulk_result(
     f: types.ScalarBulkMethodProtocolT,
 ) -> types.ModelBulkMethodProtocolT:
-    if _should_await(f):
+    if _isasync(f):
         af = cast(Callable[..., Awaitable], f)
 
         @functools.wraps(af)
@@ -216,7 +215,7 @@ def _maybe_coerce_bulk_result(
 
 
 def _maybe_coerce_result(f: types.QueryMethodProtocolT) -> types.ModelMethodProtocolT:
-    if _should_await(f):
+    if _isasync(f):
 
         @functools.wraps(f)  # type: ignore
         async def _maybe_coerce_result_wrapper(
@@ -249,13 +248,6 @@ def _maybe_coerce_result(f: types.QueryMethodProtocolT) -> types.ModelMethodProt
     return cast(types.ModelMethodProtocolT, _maybe_coerce_result_wrapper)
 
 
-def _should_await(f):
-    unwrapped = inspect.unwrap(f)
-    return inspect.iscoroutinefunction(unwrapped) or issubclass(
-        unwrapped.__class__, mock.AsyncMock
-    )
-
-
 def retry(
     func: Union[Callable[..., Awaitable[_T]], Callable[..., _T]] = None,
     /,
@@ -274,58 +266,36 @@ def retry(
         _retries=retries,
         _errors=errors,
     ):
-        _logger = logging.getLogger(getattr(func_, "__module__", __name__))
-        if _should_await(func_):
+        if _isasync(func_):
             afunc = cast(Callable[..., Awaitable[_T]], func_)
 
             @functools.wraps(afunc)
             async def _retry(self: types.ServiceProtocolT, *args, **kwargs):
-                try:
-                    return await afunc(self, *args, **kwargs)
-                except (*_errors, *self.connector.TRANSIENT) as e:
-                    _logger.info(
-                        "Got a watched error. Entering retry loop.",
-                        error=e.__class__.__name__,
-                        exception=str(e),
-                    )
-                    tries = 0
-                    while tries < _retries:
-                        tries += 1
-                        await asyncio.sleep(delay)
-                        try:
-                            return await afunc(self, *args, **kwargs)
-                        except _errors:
-                            _logger.warning("Failed on retry.", retry=tries)
-                    _logger.error(
-                        "Couldn't recover on retries. Re-raising original error."
-                    )
-                    raise e
+                errs = (*_errors, *self.connector.TRANSIENT)
+                async with _AsyncRetryContext(
+                    func=afunc,
+                    args=args,
+                    kwargs=kwargs,
+                    errors=errs,
+                    retries=_retries,
+                    delay=delay,
+                ) as result:
+                    return result
 
         else:
 
             @functools.wraps(func_)
             def _retry(self: types.ServiceProtocolT, *args, **kwargs):
-                try:
-                    return func_(self, *args, **kwargs)
-                except (*_errors, *self.connector.TRANSIENT) as e:
-                    _logger.info(
-                        "Got a watched error. Entering retry loop. "
-                        "%(error)s: %(exception)s",
-                        error=e.__class__.__name__,
-                        exception=str(e),
-                    )
-                    tries = 0
-                    while tries < _retries:
-                        tries += 1
-                        time.sleep(delay)
-                        try:
-                            return func_(self, *args, **kwargs)
-                        except _errors:
-                            _logger.warning("Failed on retry=%(retry)s.", retry=tries)
-                    _logger.error(
-                        "Couldn't recover on retries. Re-raising original error."
-                    )
-                    raise e
+                errs = (*_errors, *self.connector.TRANSIENT)
+                with _SyncRetryContext(
+                    func=func_,
+                    args=args,
+                    kwargs=kwargs,
+                    errors=errs,
+                    retries=_retries,
+                    delay=delay,
+                ) as result:
+                    return result
 
         return _retry
 
@@ -350,70 +320,123 @@ def retry_cursor(
         _retries=retries,
         _errors=errors,
     ):
-        _logger = logging.getLogger(__name__)
-        ufunc_ = inspect.unwrap(func_)
-        if inspect.isasyncgenfunction(ufunc_):
-            afunc = cast(Callable[..., AsyncContextManager], func_)
+        context_cls = (
+            _AsyncRetryCursorContext if _isasync(func_) else _SyncRetryCursorContext
+        )
 
-            @contextlib.asynccontextmanager
-            @functools.wraps(afunc)
-            async def _retry_cursor(self: types.ServiceProtocolT, *args, **kwargs):
-                try:
-                    async with afunc(self, *args, **kwargs) as cm:
-                        yield cm
-                except (*_errors, *self.connector.TRANSIENT) as e:
-                    _logger.info(
-                        "Got a watched error. Entering retry loop. "
-                        "%(error): %(exception)",
-                        error=e.__class__.__name__,
-                        exception=str(e),
-                    )
-                    tries = 0
-                    while tries < _retries:
-                        tries += 1
-                        await asyncio.sleep(delay)
-                        try:
-                            async with afunc(self, *args, **kwargs) as cm:
-                                yield cm
-                        except _errors:
-                            _logger.warning("Failed on retry=%(retry)s.", retry=tries)
-                    _logger.error(
-                        "Couldn't recover on retries. Re-raising original error."
-                    )
-                    raise e
-
-        else:
-            sfunc = cast(Callable[..., ContextManager], func_)
-
-            @contextlib.contextmanager
-            @functools.wraps(sfunc)
-            def _retry_cursor(self: types.ServiceProtocolT, *args, **kwargs):
-                try:
-                    with sfunc(self, *args, **kwargs) as cm:
-                        yield cm
-                except (*_errors, *self.connector.TRANSIENT) as e:
-                    _logger.info(
-                        "Got a watched error. Entering retry loop.",
-                        error=e.__class__.__name__,
-                        exception=str(e),
-                    )
-                    tries = 0
-                    while tries < _retries:
-                        tries += 1
-                        time.sleep(delay)
-                        try:
-                            with sfunc(self, *args, **kwargs) as cm:
-                                yield cm
-                        except _errors:
-                            _logger.warning("Failed on retry.", retry=tries)
-                    _logger.error(
-                        "Couldn't recover on retries. Re-raising original error."
-                    )
-                    raise e
+        @functools.wraps(func_)
+        def _retry_cursor(self: types.ServiceProtocolT, *args, **kwargs):
+            errs = (*_errors, *self.connector.TRANSIENT)
+            return context_cls(
+                func=func_,
+                args=args,
+                kwargs=kwargs,
+                errors=errs,
+                retries=retries,
+                delay=delay,
+            )
 
         return _retry_cursor
 
     return _retry_impl(func) if func else _retry_impl
+
+
+@typic.slotted(dict=False, weakref=True)
+@dataclasses.dataclass
+class _RetryContext:
+    func: Callable
+    args: tuple
+    kwargs: dict
+    errors: tuple[Type[BaseException], ...]
+    retries: int
+    delay: float
+
+    def _do_exec(self):
+        return self.func(*self.args, **self.kwargs)
+
+
+class _SyncRetryContext(_RetryContext):
+    def __enter__(self):
+        do, tries, retries, errors, delay = (
+            self._do_exec,
+            0,
+            self.retries,
+            self.errors,
+            self.delay,
+        )
+        try:
+            return do()
+        except errors as e:
+            time.sleep(delay)
+            while tries < retries:
+                tries += 1
+                try:
+                    return do()
+                except errors:
+                    time.sleep(delay)
+            raise e
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+
+class _SyncRetryCursorContext(_SyncRetryContext):
+    func: Callable[..., ContextManager]
+
+    def _do_exec(self):
+        call = self.func(*self.args, **self.kwargs)
+        return call.__enter__()
+
+
+class _AsyncRetryContext(_RetryContext):
+    async def __aenter__(self):
+        do, tries, retries, errors, delay = (
+            self._do_exec,
+            0,
+            self.retries,
+            self.errors,
+            self.delay,
+        )
+        try:
+            return await do()
+        except errors as e:
+            await asyncio.sleep(delay)
+            while tries < retries:
+                tries += 1
+                try:
+                    return await do()
+                except errors:
+                    await asyncio.sleep(delay)
+            raise e
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+
+class _AsyncRetryCursorContext(_AsyncRetryContext):
+    def _do_exec(self):
+        call = self.func(*self.args, **self.kwargs)
+        return call.__aenter__()
+
+
+def _isasync(f):
+    unwrapped = inspect.unwrap(f)
+    hints = typing.get_type_hints(unwrapped)
+    returns = oreturns = hints.get("returns")
+    if returns:
+        oreturns = typing.get_origin(returns)
+    return (
+        inspect.iscoroutinefunction(unwrapped)
+        or inspect.isasyncgenfunction(unwrapped)
+        or typic.get_name(oreturns)
+        in {
+            "Awaitable",
+            "AsyncIterable",
+            "AsyncIterator",
+            "AsyncGenerator",
+            "Coroutine",
+        }
+    )
 
 
 def get_connector_protocol(
