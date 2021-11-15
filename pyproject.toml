@@ -66,6 +66,7 @@ asyncpg = "^0.24.0"
 orjson = "^3.6.0"
 psycopg = { extras = ["binary", "pool"], version = "^3.0"}
 aiosqlite = "^0.17.0"
+ptpython = "^3.0.20"
 
 
 [build-system]
