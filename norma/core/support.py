@@ -421,7 +421,7 @@ class _AsyncRetryCursorContext(_AsyncRetryContext):
 
 def _isasync(f):
     unwrapped = inspect.unwrap(f)
-    hints = typing.get_type_hints(unwrapped)
+    hints = typic.get_type_hints(unwrapped)
     returns = oreturns = hints.get("returns")
     if returns:
         oreturns = typing.get_origin(returns)
