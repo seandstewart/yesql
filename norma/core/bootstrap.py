@@ -56,14 +56,20 @@ def bootstrap(
     bulk = cast(Literal[True, False], inspection.isbulk(func))
     run_query: types.QueryMethodProtocolT[_MT]
     iscursor = func.__name__.endswith("_cursor")
+    isaio = cls.isaio
     if iscursor:
-        run_query = _bootstrap_cursor(func, scalar=scalar, proxy=cursor_proxy)  # type: ignore
+        run_query = _bootstrap_cursor(
+            func,
+            scalar=scalar,
+            proxy=cursor_proxy,
+            isaio=isaio,
+        )  # type: ignore
 
     elif inspection.ispersist(func):
-        run_query = _bootstrap_persist(func, scalar=scalar, bulk=bulk)  # type: ignore
+        run_query = _bootstrap_persist(func, scalar=scalar, bulk=bulk, isaio=isaio)  # type: ignore
 
     else:
-        run_query = _bootstrap_default(func, scalar=scalar, bulk=bulk)  # type: ignore
+        run_query = _bootstrap_default(func, scalar=scalar, bulk=bulk, isaio=isaio)  # type: ignore
 
     run_query.__name__ = func.__name__
     run_query.__doc__ = func.__doc__
@@ -74,13 +80,11 @@ def bootstrap(
 
 
 def _bootstrap_cursor(
-    func: QueryFn, *, scalar: bool, proxy: Union[Callable, Type]
+    func: QueryFn, *, scalar: bool, proxy: Union[Callable, Type], isaio: bool
 ) -> types.CursorMethodProtocolT:
-    ufunc = inspect.unwrap(func)
-    isaio = inspect.isasyncgenfunction(ufunc)
     if scalar and isaio:
 
-        @support.retry_cursor
+        @support.retry_cursor(isaio=isaio)
         @contextlib.asynccontextmanager
         async def run_scalar_query_cursor(
             self: types.AsyncServiceProtocolT,
@@ -97,7 +101,7 @@ def _bootstrap_cursor(
 
     if scalar:
 
-        @support.retry_cursor
+        @support.retry_cursor(isaio=isaio)
         @contextlib.contextmanager
         def run_scalar_query_cursor(
             self: types.SyncServiceProtocolT,
@@ -114,7 +118,7 @@ def _bootstrap_cursor(
 
     if isaio:
 
-        @support.retry_cursor
+        @support.retry_cursor(isaio=isaio)
         @contextlib.asynccontextmanager
         async def run_query_cursor(
             self: types.AsyncServiceProtocolT,
@@ -125,14 +129,18 @@ def _bootstrap_cursor(
         ):
             async with self.connector.connection(connection=connection) as c:
                 async with func(c, *args, **kwargs) as factory:
-                    cursor = await factory
-                    yield AsyncCoercingCursor(self, proxy(cursor)) if coerce else cursor
+                    cursor = (
+                        (await factory) if inspect.isawaitable(factory) else factory
+                    )
+                    yield AsyncCoercingCursor(self, proxy(cursor)) if coerce else proxy(
+                        cursor
+                    )
 
         return cast(types.CursorMethodProtocolT, run_query_cursor)
 
     else:
 
-        @support.retry_cursor
+        @support.retry_cursor(isaio=isaio)
         @contextlib.contextmanager
         def run_query_cursor(
             self: types.SyncServiceProtocolT,
@@ -143,46 +151,54 @@ def _bootstrap_cursor(
         ):
             with self.connector.connection(connection=connection) as c:
                 with func(c, *args, **kwargs) as cursor:
-                    yield SyncCoercingCursor(self, proxy(cursor)) if coerce else cursor
+                    cur = (
+                        SyncCoercingCursor(self, proxy(cursor))
+                        if coerce
+                        else proxy(cursor)
+                    )
+                    yield cur
 
         return cast(types.CursorMethodProtocolT, run_query_cursor)
 
 
 @overload
 def _bootstrap_persist(
-    func: QueryFn, *, scalar: Literal[False], bulk: Literal[False]
+    func: QueryFn, *, scalar: Literal[False], bulk: Literal[False], isaio: bool
 ) -> types.ModelPersistProtocolT:
     ...
 
 
 @overload
 def _bootstrap_persist(
-    func: QueryFn, *, scalar: Literal[True], bulk: Literal[False]
+    func: QueryFn, *, scalar: Literal[True], bulk: Literal[False], isaio: bool
 ) -> types.ScalarPersistProtocolT:
     ...
 
 
 @overload
 def _bootstrap_persist(
-    func: QueryFn, *, scalar: Literal[True], bulk: Literal[True]
+    func: QueryFn, *, scalar: Literal[True], bulk: Literal[True], isaio: bool
 ) -> types.ScalarBulkPersistProtocolT:
     ...
 
 
 @overload
 def _bootstrap_persist(
-    func: QueryFn, *, scalar: Literal[False], bulk: Literal[True]
+    func: QueryFn, *, scalar: Literal[False], bulk: Literal[True], isaio: bool
 ) -> types.ScalarBulkMethodProtocolT:
     ...
 
 
 def _bootstrap_persist(
-    func: QueryFn, *, scalar: Literal[True, False], bulk: Literal[True, False]
+    func: QueryFn,
+    *,
+    scalar: Literal[True, False],
+    bulk: Literal[True, False],
+    isaio: bool,
 ):
-    isaio = inspect.iscoroutinefunction(func)
     if bulk and isaio:
 
-        @support.retry
+        @support.retry(isaio=isaio)
         async def run_persist_query(
             self: types.AsyncServiceProtocolT,
             *__,
@@ -198,7 +214,7 @@ def _bootstrap_persist(
 
     elif bulk:
 
-        @support.retry
+        @support.retry(isaio=isaio)
         def run_persist_query(
             self: types.SyncServiceProtocolT,
             *__,
@@ -214,7 +230,7 @@ def _bootstrap_persist(
 
     elif isaio:
 
-        @support.retry
+        @support.retry(isaio=isaio)
         async def run_persist_query(
             self: types.AsyncServiceProtocolT,
             *__,
@@ -230,7 +246,7 @@ def _bootstrap_persist(
 
     else:
 
-        @support.retry
+        @support.retry(isaio=isaio)
         def run_persist_query(
             self: types.SyncServiceProtocolT,
             *__,
@@ -252,39 +268,43 @@ def _bootstrap_persist(
 
 @overload
 def _bootstrap_default(
-    func: QueryFn, *, scalar: Literal[False], bulk: Literal[False]
+    func: QueryFn, *, scalar: Literal[False], bulk: Literal[False], isaio: bool
 ) -> types.ModelMethodProtocolT:
     ...
 
 
 @overload
 def _bootstrap_default(
-    func: QueryFn, *, scalar: Literal[False], bulk: Literal[True]
+    func: QueryFn, *, scalar: Literal[False], bulk: Literal[True], isaio: bool
 ) -> types.ModelBulkMethodProtocolT:
     ...
 
 
 @overload
 def _bootstrap_default(
-    func: QueryFn, *, scalar: Literal[True], bulk: Literal[False]
+    func: QueryFn, *, scalar: Literal[True], bulk: Literal[False], isaio: bool
 ) -> types.QueryMethodProtocolT:
     ...
 
 
 @overload
 def _bootstrap_default(
-    func: QueryFn, *, scalar: Literal[True], bulk: Literal[True]
+    func: QueryFn, *, scalar: Literal[True], bulk: Literal[True], isaio: bool
 ) -> types.ScalarBulkMethodProtocolT:
     ...
 
 
 def _bootstrap_default(
-    func: QueryFn, *, scalar: Literal[True, False], bulk: Literal[True, False]
+    func: QueryFn,
+    *,
+    scalar: Literal[True, False],
+    bulk: Literal[True, False],
+    isaio: bool,
 ):
-    ismutate, isaio = inspection.ismutate(func), inspect.iscoroutinefunction(func)
+    ismutate = inspection.ismutate(func)
     if ismutate and isaio:
 
-        @support.retry
+        @support.retry(isaio=isaio)
         async def run_default_query(
             self: types.AsyncServiceProtocolT,
             *args,
@@ -296,7 +316,7 @@ def _bootstrap_default(
 
     elif ismutate:
 
-        @support.retry
+        @support.retry(isaio=isaio)
         def run_default_query(
             self: types.SyncServiceProtocolT,
             *args,
@@ -308,7 +328,7 @@ def _bootstrap_default(
 
     elif isaio:
 
-        @support.retry
+        @support.retry(isaio=isaio)
         async def run_default_query(
             self: types.AsyncServiceProtocolT,
             *args,
@@ -320,7 +340,7 @@ def _bootstrap_default(
 
     else:
 
-        @support.retry
+        @support.retry(isaio=isaio)
         def run_default_query(
             self: types.SyncServiceProtocolT,
             *args,
@@ -353,8 +373,10 @@ class AsyncCoercingCursor(types.AsyncCursorProtocolT[_MT]):
         return self.cursor.__getattribute__(item)
 
     async def __aiter__(self) -> AsyncIterator[_MT]:
-        async for row in self.cursor:
-            yield self.service.protocol(row)
+        row = await self.fetchrow()
+        while row:
+            yield row
+            row = await self.fetchrow()
 
     async def forward(self, n: int, *args, timeout: float = None, **kwargs):
         return await self.cursor.forward(n, *args, timeout=timeout, **kwargs)
@@ -363,11 +385,11 @@ class AsyncCoercingCursor(types.AsyncCursorProtocolT[_MT]):
         self, n: int, *args, timeout: float = None, **kwargs
     ) -> Iterable[_MT]:
         page = await self.cursor.fetch(n, *args, timeout=timeout, **kwargs)
-        return page and self.service.bulk_protocol(({**r} for r in page))  # type: ignore
+        return page and self.service.bulk_protocol(page)  # type: ignore
 
     async def fetchrow(self, *args, timeout: float = None, **kwargs) -> Optional[_MT]:
         row = await self.cursor.fetchrow(*args, timeout=timeout, **kwargs)
-        return row and self.service.protocol({**row})  # type: ignore
+        return row and self.service.protocol(row)  # type: ignore
 
 
 class SyncCoercingCursor(types.SyncCursorProtocolT[_MT]):
@@ -395,8 +417,8 @@ class SyncCoercingCursor(types.SyncCursorProtocolT[_MT]):
 
     def fetch(self, n: int, *args, timeout: float = None, **kwargs) -> Iterable[_MT]:
         page = self.cursor.fetch(n, *args, timeout=timeout, **kwargs)
-        return page and self.service.bulk_protocol(({**r} for r in page))  # type: ignore
+        return page and self.service.bulk_protocol(page)  # type: ignore
 
     def fetchrow(self, *args, timeout: float = None, **kwargs) -> Optional[_MT]:
         row = self.cursor.fetchrow(*args, timeout=timeout, **kwargs)
-        return row and self.service.protocol({**row})  # type: ignore
+        return row and self.service.protocol(row)  # type: ignore

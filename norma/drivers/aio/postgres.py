@@ -159,11 +159,10 @@ class RollbackTransaction:
             exc_type = _Rollback
             exc_val = _Rollback("Client-requested rollback.")
             try:
-                await self.transaction.__aexit__(exc_type, exc_val, exc_tb)
+                return await self.transaction.__aexit__(exc_type, exc_val, exc_tb)
             except asyncpg.InterfaceError:
                 # The transaction is either closed or errored already. Move on.
                 pass
-        return await self.transaction.__aexit__(exc_type, exc_val, exc_tb)
 
 
 class _Rollback(Exception):

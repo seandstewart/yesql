@@ -15,6 +15,7 @@ class AsyncPosts(norma.AsyncQueryService[Post]):
         __querylib__ = QUERIES
         __tablename__ = "posts"
         __exclude_fields__ = frozenset(("slug",))
+        __scalar_queries__ = frozenset(("add_tags",))
 
     @norma.support.coerceable(bulk=True)
     @norma.support.retry
@@ -46,4 +47,5 @@ SyncPosts = norma.servicemaker(
     tablename="posts",
     driver="psycopg",
     exclude_fields=frozenset(("slug",)),
+    scalar_queries=frozenset(("add_tags",)),
 )

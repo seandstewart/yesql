@@ -12,7 +12,7 @@ SELECT * FROM blog.posts WHERE tags && :tags::text[];
 
 -- name: all
 -- Get all blog posts.
-SELECT * FROM blog.posts;
+SELECT * FROM blog.posts ORDER BY id;
 
 -- name: published
 -- Get all blog posts which have been published up to this date.

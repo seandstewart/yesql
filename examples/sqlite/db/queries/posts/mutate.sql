@@ -18,6 +18,25 @@ VALUES (
 )
 RETURNING *;
 
+-- name: bulk_create*!
+-- Create a new blog post :)
+INSERT INTO posts (
+    title,
+    slug,
+    subtitle,
+    tagline,
+    body,
+    publication_date
+)
+VALUES (
+    :title,
+    :slug,
+    :subtitle,
+    :tagline,
+    :body,
+    :publication_date
+);
+
 -- name: update<!
 -- Update a post with all new data.
 UPDATE posts

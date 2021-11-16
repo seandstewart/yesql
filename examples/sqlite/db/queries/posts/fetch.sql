@@ -8,7 +8,7 @@ SELECT * FROM posts WHERE slug = :slug;
 
 -- name: all
 -- Get all blog posts.
-SELECT * FROM posts;
+SELECT * FROM posts ORDER BY id;
 
 -- name: published
 -- Get all blog posts which have been published up to this date.

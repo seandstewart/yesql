@@ -130,6 +130,7 @@ class ServiceProtocolT(Generic[ModelT]):
     queries: ClassVar[aiosql.aiosql.Queries]
     # Initialized Attributes
     connector: AnyConnectorProtocolT
+    isaio: bool
 
     def __getattr__(self, item: str) -> QueryMethodProtocolT[ModelT]:
         ...
@@ -146,10 +147,12 @@ class ServiceProtocolT(Generic[ModelT]):
 
 class AsyncServiceProtocolT(ServiceProtocolT):
     connector: AsyncConnectorProtocolT
+    isaio = True
 
 
 class SyncServiceProtocolT(ServiceProtocolT):
     connector: SyncConnectorProtocolT
+    isaio = False
 
 
 _ReturnT = TypeVar("_ReturnT", covariant=True)

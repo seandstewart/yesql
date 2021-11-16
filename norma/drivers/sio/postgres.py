@@ -80,6 +80,7 @@ class PsycoPGConnector(types.SyncConnectorProtocolT[psycopg.Connection]):
         else:
             with self.pool.connection(timeout=timeout) as conn:
                 yield conn
+                conn.rollback()
 
     @contextlib.contextmanager
     def transaction(

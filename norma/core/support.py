@@ -254,6 +254,7 @@ def retry(
     *errors: Type[BaseException],
     retries: int = 10,
     delay: float = 0.1,
+    isaio: bool = False,
 ):
     """Automatically retry a database operation on a transient error.
 
@@ -266,13 +267,15 @@ def retry(
         _retries=retries,
         _errors=errors,
     ):
-        if _isasync(func_):
+        _isaio = isaio or _isasync(func_)
+        if _isaio:
             afunc = cast(Callable[..., Awaitable[_T]], func_)
 
             @functools.wraps(afunc)
             async def _retry(self: types.ServiceProtocolT, *args, **kwargs):
                 errs = (*_errors, *self.connector.TRANSIENT)
                 async with _AsyncRetryContext(
+                    svc=self,
                     func=afunc,
                     args=args,
                     kwargs=kwargs,
@@ -288,6 +291,7 @@ def retry(
             def _retry(self: types.ServiceProtocolT, *args, **kwargs):
                 errs = (*_errors, *self.connector.TRANSIENT)
                 with _SyncRetryContext(
+                    svc=self,
                     func=func_,
                     args=args,
                     kwargs=kwargs,
@@ -308,6 +312,7 @@ def retry_cursor(
     *errors: Type[BaseException],
     retries: int = 10,
     delay: float = 0.1,
+    isaio: bool = False,
 ):
     """Automatically retry a database operation on a transient error.
 
@@ -320,14 +325,14 @@ def retry_cursor(
         _retries=retries,
         _errors=errors,
     ):
-        context_cls = (
-            _AsyncRetryCursorContext if _isasync(func_) else _SyncRetryCursorContext
-        )
+        _isaio = isaio or _isasync(func_)
+        context_cls = _AsyncRetryCursorContext if _isaio else _SyncRetryCursorContext
 
         @functools.wraps(func_)
         def _retry_cursor(self: types.ServiceProtocolT, *args, **kwargs):
             errs = (*_errors, *self.connector.TRANSIENT)
             return context_cls(
+                svc=self,
                 func=func_,
                 args=args,
                 kwargs=kwargs,
@@ -344,6 +349,7 @@ def retry_cursor(
 @typic.slotted(dict=False, weakref=True)
 @dataclasses.dataclass
 class _RetryContext:
+    svc: types.ServiceProtocolT
     func: Callable
     args: tuple
     kwargs: dict
@@ -352,7 +358,7 @@ class _RetryContext:
     delay: float
 
     def _do_exec(self):
-        return self.func(*self.args, **self.kwargs)
+        return self.func(self.svc, *self.args, **self.kwargs)
 
 
 class _SyncRetryContext(_RetryContext):
@@ -384,7 +390,7 @@ class _SyncRetryCursorContext(_SyncRetryContext):
     func: Callable[..., ContextManager]
 
     def _do_exec(self):
-        call = self.func(*self.args, **self.kwargs)
+        call = self.func(self.svc, *self.args, **self.kwargs)
         return call.__enter__()
 
 
@@ -415,7 +421,7 @@ class _AsyncRetryContext(_RetryContext):
 
 class _AsyncRetryCursorContext(_AsyncRetryContext):
     def _do_exec(self):
-        call = self.func(*self.args, **self.kwargs)
+        call = self.func(self.svc, *self.args, **self.kwargs)
         return call.__aenter__()
 
 

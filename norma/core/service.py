@@ -159,9 +159,9 @@ class BaseQueryService(types.ServiceProtocolT[_MT]):
 
     _DRIVER_TO_AIOSQL = {
         "asyncpg": "asyncpg",
-        "aiosqlite": "norma.core.drivers.aio.sqlite.AIOSQLiteReturningDriverAdaptor",
+        "aiosqlite": "norma.drivers.aio.sqlite.AIOSQLiteReturningDriverAdaptor",
         "psycopg": "psycopg2",
-        "sqlite": "norma.core.drivers.sio.sqlite.SQLite3ReturningDriverAdaptor",
+        "sqlite": "norma.drivers.sio.sqlite.SQLite3ReturningDriverAdaptor",
     }
 
     @classmethod
@@ -314,6 +314,7 @@ class AsyncQueryService(BaseQueryService[_MT]):
     """An event-loop compatible query service (async/await)."""
 
     connector: types.AsyncConnectorProtocolT
+    isaio = True
 
     async def __aenter__(self):
         await self.connector.initialize()
@@ -360,6 +361,7 @@ class SyncQueryService(BaseQueryService[_MT]):
     """A blocking-IO query service."""
 
     connector: types.SyncConnectorProtocolT
+    isaio = False
 
     __abstract__ = True
 
