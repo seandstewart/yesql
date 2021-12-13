@@ -21,6 +21,9 @@ jobs:
       postgres:
         # Docker Hub image
         image: postgres
+        # Maps tcp port 5432 on service container to the host
+        ports:
+        - 5432:5432
         # Set health checks to wait until postgres has started
         options: >-
           --health-cmd pg_isready

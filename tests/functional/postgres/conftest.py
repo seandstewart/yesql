@@ -11,7 +11,7 @@ from tests.functional.postgres import factories
 
 @pytest.fixture(scope="package", autouse=True)
 def dsn() -> str:
-    dsn = "postgres://postgres:@postgres:5432/test?sslmode=disable"
+    dsn = "postgres://postgres:@localhost:5432/test?sslmode=disable"
     with mock.patch.dict(os.environ, database_url=dsn):
         yield dsn
 
