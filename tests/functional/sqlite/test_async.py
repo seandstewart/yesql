@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime
 
-import asyncpg
+import aiosqlite
 import pytest
 
 from examples.sqlite.db import client, model
@@ -17,7 +17,7 @@ def posts() -> client.AsyncPosts:
 
 
 @pytest.fixture
-async def session(posts) -> asyncpg.Connection:
+async def session(posts) -> aiosqlite.Connection:
     async with posts.connector.transaction(rollback=True) as c:
         yield c
 
@@ -63,16 +63,6 @@ async def test_persist_update(posts, post, session):
     assert isinstance(published.publication_date, datetime.date)
 
 
-async def test_persist_scalar(posts, post, session):
-    # Given
-    created: model.Post = await posts.create(model=post, connection=session)
-    new_tags = {"very", "cool"}
-    # When
-    tags = await posts.add_tags(id=created.id, tags=new_tags, connection=session)
-    # Then
-    assert {*tags} == new_tags
-
-
 async def test_persist_bulk(posts, session):
     # Given
     batch = factories.PostFactory.create_batch(size=10)
@@ -104,7 +94,7 @@ async def test_persist_bulk_raw(posts, session):
 async def test_cursor_fetch(posts, session):
     # Given
     batch = factories.PostFactory.create_batch(size=10)
-    await posts.bulk_create(batch, connection=session)
+    await posts.bulk_create(models=batch, connection=session)
     await posts.all(connection=session)
     # When
     async with posts.all_cursor(connection=session) as cursor:
@@ -117,7 +107,7 @@ async def test_cursor_fetch(posts, session):
 async def test_cursor_fetch_raw(posts, session):
     # Given
     batch = factories.PostFactory.create_batch(size=10)
-    await posts.bulk_create(batch, connection=session)
+    await posts.bulk_create(models=batch, connection=session)
     await posts.all(connection=session)
     # When
     async with posts.all_cursor(connection=session, coerce=False) as cursor:
@@ -130,7 +120,7 @@ async def test_cursor_fetch_raw(posts, session):
 async def test_cursor_fetchrow(posts, session):
     # Given
     batch = factories.PostFactory.create_batch(size=10)
-    await posts.bulk_create(batch, connection=session)
+    await posts.bulk_create(models=batch, connection=session)
     await posts.all(connection=session)
     # When
     async with posts.all_cursor(connection=session) as cursor:
@@ -142,7 +132,7 @@ async def test_cursor_fetchrow(posts, session):
 async def test_cursor_fetchrow_raw(posts, session):
     # Given
     batch = factories.PostFactory.create_batch(size=10)
-    await posts.bulk_create(batch, connection=session)
+    await posts.bulk_create(models=batch, connection=session)
     await posts.all(connection=session)
     # When
     async with posts.all_cursor(connection=session, coerce=False) as cursor:
@@ -154,7 +144,7 @@ async def test_cursor_fetchrow_raw(posts, session):
 async def test_cursor_aiter(posts, session):
     # Given
     batch = factories.PostFactory.create_batch(size=10)
-    await posts.bulk_create(batch, connection=session)
+    await posts.bulk_create(models=batch, connection=session)
     created = await posts.all(connection=session)
     # When
     async with posts.all_cursor(connection=session) as cursor:
@@ -162,11 +152,11 @@ async def test_cursor_aiter(posts, session):
     assert fetched == created
 
 
-@pytest.mark.xfail("SQLite3 doesn't support scrolling cursors.")
+@pytest.mark.xfail(reason="SQLite3 doesn't support scrolling cursors.")
 async def test_cursor_forward(posts, session):
     # Given
     batch = factories.PostFactory.create_batch(size=10)
-    await posts.bulk_create(batch, connection=session)
+    await posts.bulk_create(models=batch, connection=session)
     created = await posts.all(connection=session)
     # When
     async with posts.all_cursor(connection=session) as cursor:

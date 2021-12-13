@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import datetime
+import sqlite3
 
-import psycopg
 import pytest
 
 from examples.sqlite.db import client, model
@@ -15,7 +15,8 @@ def posts() -> client.SyncPosts:
 
 
 @pytest.fixture
-def session(posts) -> psycopg.Connection:
+def session(posts) -> sqlite3.Connection:
+    c: sqlite3.Connection
     with posts.connector.transaction(rollback=True) as c:
         yield c
 
@@ -90,8 +91,7 @@ def test_persist_bulk_raw(posts, session):
 def test_cursor_fetch(posts, session):
     # Given
     batch = factories.PostFactory.create_batch(size=10)
-    posts.bulk_create(batch, connection=session)
-    posts.all(connection=session)
+    posts.bulk_create(models=batch, connection=session)
     # When
     with posts.all_cursor(connection=session) as cursor:
         page = cursor.fetch(n=5)
@@ -103,7 +103,7 @@ def test_cursor_fetch(posts, session):
 def test_cursor_fetch_raw(posts, session):
     # Given
     batch = factories.PostFactory.create_batch(size=10)
-    posts.bulk_create(batch, connection=session)
+    posts.bulk_create(models=batch, connection=session)
     posts.all(connection=session)
     # When
     with posts.all_cursor(connection=session, coerce=False) as cursor:
@@ -116,7 +116,7 @@ def test_cursor_fetch_raw(posts, session):
 def test_cursor_fetchrow(posts, session):
     # Given
     batch = factories.PostFactory.create_batch(size=10)
-    posts.bulk_create(batch, connection=session)
+    posts.bulk_create(models=batch, connection=session)
     posts.all(connection=session)
     # When
     with posts.all_cursor(connection=session) as cursor:
@@ -128,7 +128,7 @@ def test_cursor_fetchrow(posts, session):
 def test_cursor_fetchrow_raw(posts, session):
     # Given
     batch = factories.PostFactory.create_batch(size=10)
-    posts.bulk_create(batch, connection=session)
+    posts.bulk_create(models=batch, connection=session)
     posts.all(connection=session)
     # When
     with posts.all_cursor(connection=session, coerce=False) as cursor:
@@ -137,10 +137,10 @@ def test_cursor_fetchrow_raw(posts, session):
     assert post and not isinstance(post, model.Post)
 
 
-def test_cursor_aiter(posts, session):
+def test_cursor_iter(posts, session):
     # Given
     batch = factories.PostFactory.create_batch(size=10)
-    posts.bulk_create(batch, connection=session)
+    posts.bulk_create(models=batch, connection=session)
     created = posts.all(connection=session)
     # When
     with posts.all_cursor(connection=session) as cursor:
@@ -148,10 +148,11 @@ def test_cursor_aiter(posts, session):
     assert fetched == created
 
 
+@pytest.mark.xfail(reason="SQLite3 doesn't support scrolling cursors.")
 def test_cursor_forward(posts, session):
     # Given
     batch = factories.PostFactory.create_batch(size=10)
-    posts.bulk_create(batch, connection=session)
+    posts.bulk_create(models=batch, connection=session)
     created = posts.all(connection=session)
     # When
     with posts.all_cursor(connection=session) as cursor:
@@ -174,6 +175,6 @@ def test_default_raw(posts, post, session):
     # Given
     post = posts.create(model=post, connection=session, coerce=False)
     # When
-    fetched = posts.get(id=post.id, connection=session, coerce=False)
+    fetched = posts.get(id=post["id"], connection=session, coerce=False)
     # Then
     assert fetched == post

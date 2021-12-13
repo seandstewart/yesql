@@ -5,8 +5,10 @@ import dataclasses
 import importlib
 import inspect
 import functools
+import sqlite3
 import time
 import typing
+import uuid
 from types import ModuleType
 from typing import (
     Callable,
@@ -383,15 +385,22 @@ class _SyncRetryContext(_RetryContext):
             raise e
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        print(f"Exiting context {self.func}")
+
         pass
 
 
 class _SyncRetryCursorContext(_SyncRetryContext):
+    __slots__ = ("ctx",)
+
     func: Callable[..., ContextManager]
 
     def _do_exec(self):
-        call = self.func(self.svc, *self.args, **self.kwargs)
-        return call.__enter__()
+        self.ctx = self.func(self.svc, *self.args, **self.kwargs)
+        return self.ctx.__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return self.ctx.__exit__(exc_type, exc_val, exc_tb)
 
 
 class _AsyncRetryContext(_RetryContext):
@@ -420,9 +429,14 @@ class _AsyncRetryContext(_RetryContext):
 
 
 class _AsyncRetryCursorContext(_AsyncRetryContext):
+    __slots__ = ("ctx",)
+
     def _do_exec(self):
-        call = self.func(self.svc, *self.args, **self.kwargs)
-        return call.__aenter__()
+        self.ctx = self.func(self.svc, *self.args, **self.kwargs)
+        return self.ctx.__aenter__()
+
+    def __aexit__(self, exc_type, exc_val, exc_tb):
+        return self.ctx.__aexit__(exc_type, exc_val, exc_tb)
 
 
 def _isasync(f):
@@ -503,3 +517,47 @@ def dumps(o: Any) -> str:
 
 
 loads = orjson.loads
+
+
+class SyncSavepointScope:
+    __slots__ = "connection", "name", "rollback"
+
+    def __init__(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        name: str = None,
+        rollback: bool = False,
+    ):
+        self.connection = connection
+        self.rollback = rollback
+        self.name = name or f"savepoint-{uuid.uuid4()}"
+
+    def __enter__(self):
+        self.connection.execute(f"SAVEPOINT {self.name!r}")
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.rollback or exc_type:
+            self.connection.execute(f"ROLLBACK TO {self.name!r}")
+            return
+        self.connection.execute(f"RELEASE {self.name!r}")
+
+
+class AsyncSavepointScope:
+    __slots__ = "connection", "name", "rollback"
+
+    def __init__(
+        self, connection: types.ConnectionT, *, name: str = None, rollback: bool = False
+    ):
+        self.connection = connection
+        self.rollback = rollback
+        self.name = name or f"savepoint-{uuid.uuid4()}"
+
+    async def __aenter__(self):
+        await self.connection.execute(f"SAVEPOINT {self.name!r}")
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if self.rollback or exc_type:
+            await self.connection.execute(f"ROLLBACK TO {self.name!r}")
+            return
+        await self.connection.execute(f"RELEASE {self.name!r}")

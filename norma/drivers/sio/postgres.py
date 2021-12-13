@@ -185,10 +185,11 @@ def create_pool(**overrides) -> pgpool.ConnectionPool:
 
 
 class _PsycoPGCursorProxy:
-    __slots__ = ("_cursor",)
+    __slots__ = ("_cursor", "__iter__")
 
     def __init__(self, cursor: Union[psycopg.Cursor, psycopg.ServerCursor]):
         self._cursor = cursor
+        self.__iter__ = cursor.__iter__
 
     def __getattr__(self, item):
         return self._cursor.__getattribute__(item)

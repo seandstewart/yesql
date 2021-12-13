@@ -1,7 +1,6 @@
 import os
 from unittest import mock
 
-import asyncpg
 import sqlite3
 import pytest
 
@@ -19,7 +18,7 @@ def dsn() -> str:
 
 @pytest.fixture(scope="package", autouse=True)
 def initdb(dsn):
-    connection: asyncpg.Connection
+    connection: sqlite3.Connection
     connection = sqlite3.connect(dsn)
     cursor = connection.cursor()
     script = db.SCHEMA.read_text()

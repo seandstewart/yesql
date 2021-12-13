@@ -26,6 +26,12 @@ async def initdb(dsn):
     except asyncpg.DuplicateSchemaError:
         pass
     yield
+    await connection.execute(
+        "DROP SCHEMA IF EXISTS blog CASCADE; "
+        "DROP TABLE IF EXISTS public.schema_migrations CASCADE; "
+        "DROP FUNCTION IF EXISTS public.slugify;"
+        "DROP FUNCTION IF EXISTS public.get_updated_at;"
+    )
 
 
 @pytest.fixture

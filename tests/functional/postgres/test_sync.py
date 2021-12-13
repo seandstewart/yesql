@@ -100,7 +100,7 @@ def test_persist_bulk_raw(posts, session):
 def test_cursor_fetch(posts, session):
     # Given
     batch = factories.PostFactory.create_batch(size=10)
-    posts.bulk_create(batch, connection=session)
+    posts.bulk_create(models=batch, connection=session)
     # When
     with posts.all_cursor(connection=session) as cursor:
         page = cursor.fetch(n=5)
@@ -112,7 +112,7 @@ def test_cursor_fetch(posts, session):
 def test_cursor_fetch_raw(posts, session):
     # Given
     batch = factories.PostFactory.create_batch(size=10)
-    posts.bulk_create(batch, connection=session)
+    posts.bulk_create(models=batch, connection=session)
     # When
     with posts.all_cursor(connection=session, coerce=False) as cursor:
         page = cursor.fetch(n=5)
@@ -124,7 +124,7 @@ def test_cursor_fetch_raw(posts, session):
 def test_cursor_fetchrow(posts, session):
     # Given
     batch = factories.PostFactory.create_batch(size=10)
-    posts.bulk_create(batch, connection=session)
+    posts.bulk_create(models=batch, connection=session)
     posts.all(connection=session)
     # When
     with posts.all_cursor(connection=session) as cursor:
@@ -136,7 +136,7 @@ def test_cursor_fetchrow(posts, session):
 def test_cursor_fetchrow_raw(posts, session):
     # Given
     batch = factories.PostFactory.create_batch(size=10)
-    posts.bulk_create(batch, connection=session)
+    posts.bulk_create(models=batch, connection=session)
     # When
     with posts.all_cursor(connection=session, coerce=False) as cursor:
         post = cursor.fetchrow()
@@ -144,10 +144,10 @@ def test_cursor_fetchrow_raw(posts, session):
     assert post and not isinstance(post, model.Post)
 
 
-def test_cursor_aiter(posts, session):
+def test_cursor_iter(posts, session):
     # Given
     batch = factories.PostFactory.create_batch(size=10)
-    posts.bulk_create(batch, connection=session)
+    posts.bulk_create(models=batch, connection=session)
     created = posts.all(connection=session)
     # When
     with posts.all_cursor(connection=session) as cursor:
@@ -158,14 +158,12 @@ def test_cursor_aiter(posts, session):
 def test_cursor_forward(posts, session):
     # Given
     batch = factories.PostFactory.create_batch(size=10)
-    posts.bulk_create(batch, connection=session)
+    posts.bulk_create(models=batch, connection=session)
     created = posts.all(connection=session)
     # When
-    with posts.all_cursor(connection=session) as cursor:
-        cursor.forward(n=len(created))
-        post = cursor.fetchrow()
-    # Then
-    assert not post
+    with pytest.raises(IndexError):
+        with posts.all_cursor(connection=session) as cursor:
+            cursor.forward(n=len(created))
 
 
 def test_default(posts, post, session):

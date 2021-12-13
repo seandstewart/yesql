@@ -10,7 +10,7 @@ import sqlite3
 import aiosql.adapters.sqlite3
 import typic
 
-from norma import types
+from norma import types, support
 
 LOCK: contextvars.ContextVar[Optional[threading.Lock]] = contextvars.ContextVar(
     "sqlite_lock", default=None
@@ -87,8 +87,9 @@ class SQLiteConnector(types.SyncConnectorProtocolT[sqlite3.Connection]):
     ) -> Iterator[sqlite3.Connection]:
         conn: sqlite3.Connection
         with self.connection(timeout=timeout, connection=connection) as conn:
-            yield conn
-            if not rollback:
+            with support.SyncSavepointScope(conn, rollback=rollback):
+                yield conn
+            if rollback is False and connection is None:
                 conn.commit()
 
     def close(self, timeout: float = 10):
@@ -140,10 +141,11 @@ class SQLite3ReturningDriverAdaptor(aiosql.adapters.sqlite3.SQLite3DriverAdapter
 
 
 class _SQLite3CursorProxy:
-    __slots__ = ("_cursor",)
+    __slots__ = ("_cursor", "__iter__")
 
     def __init__(self, cursor: sqlite3.Cursor):
         self._cursor = cursor
+        self.__iter__ = cursor.__iter__
 
     def __getattr__(self, item):
         return self._cursor.__getattribute__(item)

@@ -9,7 +9,7 @@ import aiosql.adapters.aiosqlite
 import aiosqlite
 import typic
 
-from norma import types
+from norma import types, support
 
 LOCK: contextvars.ContextVar[Optional[asyncio.Lock]] = contextvars.ContextVar(
     "sqlite_lock", default=None
@@ -86,8 +86,9 @@ class AIOSQLiteConnector(types.AsyncConnectorProtocolT[aiosqlite.Connection]):
     ) -> AsyncIterator[aiosqlite.Connection]:
         conn: aiosqlite.Connection
         async with self.connection(timeout=timeout, connection=connection) as conn:
-            yield conn
-            if not rollback:
+            async with support.AsyncSavepointScope(conn, rollback=rollback):
+                yield conn
+            if connection is None and rollback is False:
                 await conn.commit()
 
     async def close(self, timeout: float = 10):
@@ -137,10 +138,14 @@ class AIOSQLiteReturningDriverAdaptor(aiosql.adapters.aiosqlite.AioSQLiteAdapter
 
 
 class _AIOSQLiteCursorProxy:
-    __slots__ = ("_cursor",)
+    __slots__ = (
+        "_cursor",
+        "__aiter__",
+    )
 
     def __init__(self, cursor: aiosqlite.Cursor):
         self._cursor = cursor
+        self.__aiter__ = cursor.__aiter__
 
     def __getattr__(self, item):
         return self._cursor.__getattribute__(item)

@@ -103,7 +103,8 @@ async def test_persist_bulk_raw(posts, session):
 
 async def test_cursor_fetch(posts, session):
     # Given
-    factories.PostFactory.create_batch(size=10)
+    batch = factories.PostFactory.create_batch(size=10)
+    await posts.bulk_create(models=batch, connection=session)
     # When
     async with posts.all_cursor(connection=session) as cursor:
         page = await cursor.fetch(n=5)
@@ -115,7 +116,7 @@ async def test_cursor_fetch(posts, session):
 async def test_cursor_fetch_raw(posts, session):
     # Given
     batch = factories.PostFactory.create_batch(size=10)
-    await posts.bulk_create_returning(batch, connection=session)
+    await posts.bulk_create(models=batch, connection=session)
     # When
     async with posts.all_cursor(connection=session, coerce=False) as cursor:
         page = await cursor.fetch(n=5)
@@ -127,7 +128,7 @@ async def test_cursor_fetch_raw(posts, session):
 async def test_cursor_fetchrow(posts, session):
     # Given
     batch = factories.PostFactory.create_batch(size=10)
-    await posts.bulk_create_returning(batch, connection=session)
+    await posts.bulk_create(models=batch, connection=session)
     # When
     async with posts.all_cursor(connection=session) as cursor:
         post = await cursor.fetchrow()
@@ -138,7 +139,7 @@ async def test_cursor_fetchrow(posts, session):
 async def test_cursor_fetchrow_raw(posts, session):
     # Given
     batch = factories.PostFactory.create_batch(size=10)
-    await posts.bulk_create_returning(batch, connection=session)
+    await posts.bulk_create(models=batch, connection=session)
     # When
     async with posts.all_cursor(connection=session, coerce=False) as cursor:
         post = await cursor.fetchrow()
@@ -159,13 +160,25 @@ async def test_cursor_aiter(posts, session):
 async def test_cursor_forward(posts, session):
     # Given
     batch = factories.PostFactory.create_batch(size=10)
-    created = await posts.bulk_create_returning(batch, connection=session)
+    await posts.bulk_create(models=batch, connection=session)
     # When
     async with posts.all_cursor(connection=session) as cursor:
-        await cursor.forward(n=len(created))
+        await cursor.forward(n=len(batch))
         post = await cursor.fetchrow()
     # Then
     assert not post
+
+
+async def test_bulk_create_returning(posts, session):
+    # Given
+    batch = factories.PostFactory.create_batch(size=10)
+    expected = {(post.title, post.subtitle, post.tagline, post.body) for post in batch}
+    # When
+    created = await posts.bulk_create_returning(batch, connection=session)
+    # Then
+    assert {
+        (post.title, post.subtitle, post.tagline, post.body) for post in created
+    } == expected
 
 
 async def test_default(posts, post, session):
