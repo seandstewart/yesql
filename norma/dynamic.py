@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import inspect
 import warnings
 from typing import (
     Union,
@@ -18,9 +19,11 @@ from typing import (
     Literal,
     Callable,
     TYPE_CHECKING,
+    cast,
 )
 
 import pypika
+import typic
 
 from norma.core import support, types, bootstrap
 
@@ -57,6 +60,7 @@ class BaseDynamicQueryLib(Generic[_MT]):
         "connector",
         "table",
         "builder",
+        "cursor_proxy",
     )
 
     def __init__(
@@ -73,6 +77,7 @@ class BaseDynamicQueryLib(Generic[_MT]):
         self.builder = self._get_query_builder(
             self.table, driver=service.metadata.__driver__
         )
+        self.cursor_proxy = support.get_cursor_proxy(service.metadata.__driver__)
 
     def execute(
         self,
@@ -80,6 +85,7 @@ class BaseDynamicQueryLib(Generic[_MT]):
         *args,
         connection: _ConnT = None,
         coerce: bool = True,
+        rollback: bool = False,
         rtype: Literal["all", "one", "val"] = "all",
         **kwargs,
     ) -> Union[_ReturnT, Awaitable[_ReturnT]]:
@@ -100,6 +106,8 @@ class BaseDynamicQueryLib(Generic[_MT]):
                Whether to coerce the query result into the model bound to the service.
             coerce: defaults True
                 Whether to coerce the query result into the model bound to the service.
+            rollback: defaults False
+                Whether to rollback the transaction scope of this query execution.
             rtype: One of "all", "one", "val"; defaults "all"
                 Fetch all rows, one row, or the first value in the first row.
                 If "val", `coerce` will always evaluate to False.
@@ -112,13 +120,21 @@ class BaseDynamicQueryLib(Generic[_MT]):
         """
         query, params = self._resolve_query(query, args, kwargs)
         operation = self.service.queries.driver_adapter.select
+        proto: typic.SerdeProtocol[Any] = self.service.bulk_protocol
         if rtype == "one":
             operation = self.service.queries.driver_adapter.select_one
+            proto = self.service.protocol
         elif rtype == "val":
             operation = self.service.queries.driver_adapter.select_value
             coerce = False
         return self._do_execute(
-            query, params, operation, connection=connection, coerce=coerce
+            query,
+            params,
+            operation,
+            connection=connection,
+            coerce=coerce,
+            rollback=rollback,
+            proto=proto,
         )
 
     def execute_cursor(
@@ -127,6 +143,7 @@ class BaseDynamicQueryLib(Generic[_MT]):
         *args,
         connection: _ConnT = None,
         coerce: bool = True,
+        rollback: bool = False,
         **kwargs,
     ) -> Union[
         ContextManager[types.SyncCursorProtocolT[_MT]],
@@ -143,13 +160,20 @@ class BaseDynamicQueryLib(Generic[_MT]):
                 A DBAPI connectable to use during executions.
             coerce: defaults True
                 Whether to coerce the query result into the model bound to the service.
+            rollback: defaults False
+                Whether to rollback the transaction scope of this query execution.
             **kwargs:
                 Any keyword args to pass on to the query.
         """
         query, params = self._resolve_query(query, args, kwargs)
-        return self._do_execute_cursor(
-            query, params, connection=connection, coerce=coerce
+        ctx = self._do_execute_cursor(
+            query,
+            params,
+            connection=connection,
+            coerce=coerce,
+            rollback=rollback,
         )
+        return ctx
 
     def select(
         self,
@@ -251,6 +275,8 @@ class BaseDynamicQueryLib(Generic[_MT]):
         *,
         connection: _ConnT = None,
         coerce: bool = True,
+        rollback: bool = False,
+        proto: typic.SerdeProtocol = None,
     ) -> Union[_ReturnT, Awaitable[_ReturnT]]:
         ...
 
@@ -258,8 +284,10 @@ class BaseDynamicQueryLib(Generic[_MT]):
         self,
         query: str,
         params: Union[Tuple[Any, ...], Mapping[str, Any]],
+        *,
         connection: _ConnT = None,
         coerce: bool = True,
+        rollback: bool = False,
     ) -> Union[
         ContextManager[types.SyncCursorProtocolT[_MT]],
         AsyncContextManager[types.AsyncCursorProtocolT[_MT]],
@@ -293,8 +321,7 @@ class AsyncDynamicQueryLib(BaseDynamicQueryLib[_MT]):
 
     service: service.AsyncQueryService[_MT]
 
-    @support.coerceable(bulk=True)  # type: ignore
-    @support.retry
+    @support.retry  # type: ignore
     async def _do_execute(  # type: ignore[override]
         self,
         query: str,
@@ -303,11 +330,18 @@ class AsyncDynamicQueryLib(BaseDynamicQueryLib[_MT]):
         *,
         connection: _ConnT = None,
         coerce: bool = True,
+        rollback: bool = False,
+        proto: typic.SerdeProtocol = None,
     ) -> _ReturnT:
-        async with self.service.connector.transaction(connection=connection) as c:
-            return await operation(c, self._QNAME, sql=query, parameters=params)
+        async with self.service.connector.transaction(
+            connection=connection, rollback=rollback
+        ) as c:
+            result = await operation(c, self._QNAME, sql=query, parameters=params)
+            if coerce and result and proto:
+                return proto.transmute(result)
+            return result
 
-    @support.retry
+    @support.retry_cursor  # type: ignore
     @contextlib.asynccontextmanager
     async def _do_execute_cursor(
         self,
@@ -316,17 +350,24 @@ class AsyncDynamicQueryLib(BaseDynamicQueryLib[_MT]):
         *,
         connection: _ConnT = None,
         coerce: bool = True,
+        rollback: bool = False,
     ) -> AsyncIterator[types.AsyncCursorProtocolT[_MT]]:
-        async with self.service.connector.transaction(connection=connection) as c:
+        async with self.service.connector.transaction(
+            connection=connection, rollback=rollback
+        ) as c:
             async with self.service.queries.driver_adapter.select_cursor(
                 conn=c, query_name=self._QNAME, sql=query, parameters=params
             ) as factory:
-                cursor = await factory
-                yield (
-                    bootstrap.AsyncCoercingCursor(self.service, cursor)
+                native = (await factory) if inspect.isawaitable(factory) else factory
+                proxy = self.cursor_proxy(native)  # type: ignore
+                cursor = (
+                    bootstrap.AsyncCoercingCursor(
+                        self.service, cast(types.AsyncCursorProtocolT[Mapping], proxy)
+                    )
                     if coerce
-                    else cursor
+                    else proxy
                 )
+                yield cast(types.AsyncCursorProtocolT[_MT], cursor)
 
 
 class SyncDynamicQueryLib(BaseDynamicQueryLib[_MT]):
@@ -334,7 +375,6 @@ class SyncDynamicQueryLib(BaseDynamicQueryLib[_MT]):
 
     service: service.SyncQueryService[_MT]
 
-    @support.coerceable(bulk=True)
     @support.retry
     def _do_execute(  # type: ignore[override]
         self,
@@ -344,9 +384,16 @@ class SyncDynamicQueryLib(BaseDynamicQueryLib[_MT]):
         *,
         connection: _ConnT = None,
         coerce: bool = True,
+        rollback: bool = False,
+        proto: typic.SerdeProtocol = None,
     ) -> _ReturnT:
-        with self.service.connector.transaction(connection=connection) as c:
-            return operation(c, self._QNAME, sql=query, parameters=params)
+        with self.service.connector.transaction(
+            connection=connection, rollback=rollback
+        ) as c:
+            result = operation(c, self._QNAME, sql=query, parameters=params)
+            if coerce and result and proto:
+                return proto.transmute(result)
+            return result
 
     @support.retry_cursor
     @contextlib.contextmanager
@@ -357,13 +404,20 @@ class SyncDynamicQueryLib(BaseDynamicQueryLib[_MT]):
         *,
         connection: _ConnT = None,
         coerce: bool = True,
+        rollback: bool = False,
     ) -> Iterator[types.SyncCursorProtocolT[_MT]]:
-        with self.service.connector.transaction(connection=connection) as c:
+        with self.service.connector.transaction(
+            connection=connection, rollback=rollback
+        ) as c:
             with self.service.queries.driver_adapter.select_cursor(
-                conn=c, query_name=self._QNAME, sql=query, parameters=params
-            ) as cursor:
-                yield (
-                    bootstrap.SyncCoercingCursor(self.service, cursor)
+                c, self._QNAME, sql=query, parameters=params
+            ) as native:
+                proxy = self.cursor_proxy(native)  # type: ignore
+                cursor = (
+                    bootstrap.SyncCoercingCursor(
+                        self.service, cast(types.SyncCursorProtocolT[Mapping], proxy)
+                    )
                     if coerce
-                    else cursor
+                    else proxy
                 )
+                yield cast(types.SyncCursorProtocolT[_MT], cursor)
