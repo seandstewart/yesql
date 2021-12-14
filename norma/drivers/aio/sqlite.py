@@ -155,7 +155,7 @@ class _AIOSQLiteCursorProxy:
 
     async def forward(self, n: int, *args, timeout: float = None, **kwargs):
         rows = await self._cursor.fetchmany(n)
-        return len(rows)
+        return len(rows)  # type: ignore
 
     def fetch(self, n: int, *args, timeout: float = None, **kwargs):
         return self._cursor.fetchmany(n)
