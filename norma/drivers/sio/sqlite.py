@@ -151,7 +151,8 @@ class _SQLite3CursorProxy:
         return self._cursor.__getattribute__(item)
 
     def forward(self, n: int, *args, timeout: float = None, **kwargs):
-        pass  # can't scroll sqlite cursors...
+        rows = self._cursor.fetchmany(n)
+        return len(rows)
 
     def fetch(self, n: int, *args, timeout: float = None, **kwargs):
         return self._cursor.fetchmany(n)

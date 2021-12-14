@@ -3,9 +3,11 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import contextvars
+import sqlite3
 from typing import AsyncIterator, Optional
 
 import aiosql.adapters.aiosqlite
+import aiosql.types
 import aiosqlite
 import typic
 
@@ -39,11 +41,12 @@ class AIOSQLiteConnector(types.AsyncConnectorProtocolT[aiosqlite.Connection]):
 
     TRANSIENT = (aiosqlite.OperationalError,)
 
-    __slots__ = ("options", "initialized")
+    __slots__ = ("options", "initialized", "version")
 
     def __init__(self, **options):
         self.initialized = False
         self.options = get_options(**options)
+        self.version = sqlite3.sqlite_version
 
     def __repr__(self):
         initialized, open = self.initialized, self.open
@@ -151,7 +154,8 @@ class _AIOSQLiteCursorProxy:
         return self._cursor.__getattribute__(item)
 
     async def forward(self, n: int, *args, timeout: float = None, **kwargs):
-        pass  # can't scroll sqlite cursors...
+        rows = await self._cursor.fetchmany(n)
+        return len(rows)
 
     def fetch(self, n: int, *args, timeout: float = None, **kwargs):
         return self._cursor.fetchmany(n)
