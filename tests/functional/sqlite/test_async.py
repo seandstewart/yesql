@@ -6,7 +6,8 @@ import aiosqlite
 import pytest
 
 from examples.sqlite.db import client, model
-from tests.functional.postgres import factories
+from tests.functional.sqlite import factories
+from tests.functional.sqlite.conftest import xfail_sqlite_unsupported
 
 pytestmark = pytest.mark.asyncio
 
@@ -22,6 +23,7 @@ async def session(posts) -> aiosqlite.Connection:
         yield c
 
 
+@xfail_sqlite_unsupported
 async def test_persist(posts, post, session):
     # When
     created: model.Post = await posts.create(model=post, connection=session)
@@ -35,6 +37,7 @@ async def test_persist(posts, post, session):
     )
 
 
+@xfail_sqlite_unsupported
 async def test_persist_raw(posts, post, session):
     # When
     created: dict = await posts.create(
@@ -52,6 +55,7 @@ async def test_persist_raw(posts, post, session):
     ) == (post.title, post.subtitle, post.tagline, post.body)
 
 
+@xfail_sqlite_unsupported
 async def test_persist_update(posts, post, session):
     # Given
     created: model.Post = await posts.create(model=post, connection=session)
@@ -152,7 +156,6 @@ async def test_cursor_aiter(posts, session):
     assert fetched == created
 
 
-@pytest.mark.xfail(reason="SQLite3 doesn't support scrolling cursors.")
 async def test_cursor_forward(posts, session):
     # Given
     batch = factories.PostFactory.create_batch(size=10)
@@ -166,6 +169,7 @@ async def test_cursor_forward(posts, session):
     assert not post
 
 
+@xfail_sqlite_unsupported
 async def test_default(posts, post, session):
     # Given
     post = await posts.create(model=post, connection=session)
@@ -175,6 +179,7 @@ async def test_default(posts, post, session):
     assert fetched == post
 
 
+@xfail_sqlite_unsupported
 async def test_default_raw(posts, post, session):
     # Given
     post = await posts.create(model=post, connection=session, coerce=False)

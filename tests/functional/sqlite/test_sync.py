@@ -6,7 +6,8 @@ import sqlite3
 import pytest
 
 from examples.sqlite.db import client, model
-from tests.functional.postgres import factories
+from tests.functional.sqlite import factories
+from tests.functional.sqlite.conftest import xfail_sqlite_unsupported
 
 
 @pytest.fixture(scope="module")
@@ -21,6 +22,7 @@ def session(posts) -> sqlite3.Connection:
         yield c
 
 
+@xfail_sqlite_unsupported
 def test_persist(posts, post, session):
     # When
     created: model.Post = posts.create(model=post, connection=session)
@@ -34,6 +36,7 @@ def test_persist(posts, post, session):
     )
 
 
+@xfail_sqlite_unsupported
 def test_persist_raw(posts, post, session):
     # When
     created = posts.create(
@@ -51,6 +54,7 @@ def test_persist_raw(posts, post, session):
     ) == (post.title, post.subtitle, post.tagline, post.body)
 
 
+@xfail_sqlite_unsupported
 def test_persist_update(posts, post, session):
     # Given
     created: model.Post = posts.create(model=post, connection=session)
@@ -148,7 +152,6 @@ def test_cursor_iter(posts, session):
     assert fetched == created
 
 
-@pytest.mark.xfail(reason="SQLite3 doesn't support scrolling cursors.")
 def test_cursor_forward(posts, session):
     # Given
     batch = factories.PostFactory.create_batch(size=10)
@@ -162,6 +165,7 @@ def test_cursor_forward(posts, session):
     assert not post
 
 
+@xfail_sqlite_unsupported
 def test_default(posts, post, session):
     # Given
     post = posts.create(model=post, connection=session)
@@ -171,6 +175,7 @@ def test_default(posts, post, session):
     assert fetched == post
 
 
+@xfail_sqlite_unsupported
 def test_default_raw(posts, post, session):
     # Given
     post = posts.create(model=post, connection=session, coerce=False)

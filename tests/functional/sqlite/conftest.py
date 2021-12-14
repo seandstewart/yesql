@@ -30,3 +30,10 @@ def initdb(dsn):
 @pytest.fixture
 def post():
     return factories.PostFactory.create()
+
+
+MIN_SQLITE_RETURNING = (3, 35, 0)
+xfail_sqlite_unsupported = pytest.mark.xfail(
+    sqlite3.sqlite_version_info < MIN_SQLITE_RETURNING,
+    reason=f"RETURNING clauses are unsupported in SQlite v{sqlite3.sqlite_version}.",
+)
