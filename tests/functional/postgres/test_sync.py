@@ -182,3 +182,13 @@ def test_default_raw(posts, post, session):
     fetched = posts.get(id=post.id, connection=session, coerce=False)
     # Then
     assert fetched == post
+
+
+def test_default_mutate_scalar(posts, post, session):
+    # Given
+    post = posts.create(model=post, connection=session)
+    new_tags = {"click", "here"}
+    # When
+    all_tags = posts.add_tags(id=post.id, tags=new_tags, connection=session)
+    # Then
+    assert set(all_tags) & new_tags == new_tags

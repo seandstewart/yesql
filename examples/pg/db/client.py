@@ -15,7 +15,7 @@ class AsyncPosts(norma.AsyncQueryService[Post]):
         __querylib__ = QUERIES
         __tablename__ = "posts"
         __exclude_fields__ = frozenset(("slug",))
-        __scalar_queries__ = frozenset(("add_tags",))
+        __scalar_queries__ = frozenset(("add_tags", "remove_tags"))
 
     @norma.support.coerceable(bulk=True)
     @norma.support.retry

@@ -385,8 +385,6 @@ class _SyncRetryContext(_RetryContext):
             raise e
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        print(f"Exiting context {self.func}")
-
         pass
 
 
