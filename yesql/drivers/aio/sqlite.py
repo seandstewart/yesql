@@ -11,7 +11,7 @@ import aiosql.types
 import aiosqlite
 import typic
 
-from norma import types, support
+from yesql import types, support
 
 LOCK: contextvars.ContextVar[Optional[asyncio.Lock]] = contextvars.ContextVar(
     "sqlite_lock", default=None

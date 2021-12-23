@@ -6,7 +6,7 @@ from unittest import mock
 import pytest
 import typic
 
-import norma
+import yesql
 
 pytestmark = pytest.mark.asyncio
 
@@ -41,7 +41,7 @@ def func(request):
     isasync, return_value, side_effect = request.param
     mock_class = mock.AsyncMock if isasync else mock.MagicMock
     func = mock_class(return_value=return_value, side_effect=side_effect)
-    with mock.patch("norma.core.support._isasync", return_value=isasync):
+    with mock.patch("yesql.core.support._isasync", return_value=isasync):
         yield func
 
 
@@ -59,7 +59,7 @@ class TestCoerceable:
         # Given
         self = TestableService()
         # When
-        wrapped = norma.support.coerceable(func)
+        wrapped = yesql.support.coerceable(func)
         result = wrapped(self)
         if inspect.isawaitable(result):
             result = await result
@@ -79,7 +79,7 @@ class TestCoerceable:
         # Given
         self = TestableService()
         # When
-        wrapped = norma.support.coerceable(func)
+        wrapped = yesql.support.coerceable(func)
         result = wrapped(self, coerce=False)
         if inspect.isawaitable(result):
             result = await result
@@ -99,7 +99,7 @@ class TestCoerceable:
         # Given
         self = TestableService()
         # When
-        wrapped = norma.support.coerceable(func, bulk=True)
+        wrapped = yesql.support.coerceable(func, bulk=True)
         result = wrapped(self)
         if inspect.isawaitable(result):
             result = await result
@@ -119,7 +119,7 @@ class TestCoerceable:
         # Given
         self = TestableService()
         # When
-        wrapped = norma.support.coerceable(func, bulk=True)
+        wrapped = yesql.support.coerceable(func, bulk=True)
         result = wrapped(self, coerce=False)
         if inspect.isawaitable(result):
             result = await result
@@ -141,7 +141,7 @@ class TestRetry:
         # Given
         self = TestableService()
         # When
-        wrapped = norma.support.retry(func)
+        wrapped = yesql.support.retry(func)
         result = wrapped(self)
         if inspect.isawaitable(result):
             result = await result
@@ -161,7 +161,7 @@ class TestRetry:
         # Given
         self = TestableService()
         # When
-        wrapped = norma.support.retry(func)
+        wrapped = yesql.support.retry(func)
         result = wrapped(self)
         if inspect.isawaitable(result):
             result = await result
@@ -181,7 +181,7 @@ class TestRetry:
         # Given
         self = TestableService()
         # When
-        wrapped = norma.support.retry(func, retries=1)
+        wrapped = yesql.support.retry(func, retries=1)
         # Then
         with pytest.raises(TestableError):
             result = wrapped(self)
@@ -201,7 +201,7 @@ class TestRetryCursor:
             target.side_effect = side_effect
         else:
             target.return_value = return_value
-        with mock.patch("norma.core.support._isasync", return_value=isasync):
+        with mock.patch("yesql.core.support._isasync", return_value=isasync):
             yield func
 
     @pytest.mark.parametrize(
@@ -218,7 +218,7 @@ class TestRetryCursor:
         # Given
         svc = TestableService()
         # When
-        wrapped = norma.support.retry_cursor(func)
+        wrapped = yesql.support.retry_cursor(func)
         result = await self._exhaust_mock(wrapped, svc)
         # Then
         assert result
@@ -235,7 +235,7 @@ class TestRetryCursor:
         # Given
         svc = TestableService()
         # When
-        wrapped = norma.support.retry_cursor(func, retries=2)
+        wrapped = yesql.support.retry_cursor(func, retries=2)
         with pytest.raises(TestableError):
             await self._exhaust_mock(wrapped, svc)
 

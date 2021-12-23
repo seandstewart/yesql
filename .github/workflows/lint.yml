@@ -53,4 +53,4 @@ jobs:
 
     - name: Static type-check with MyPy
       run: |
-        poetry run mypy norma
+        poetry run mypy yesql

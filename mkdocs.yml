@@ -1,9 +1,9 @@
-site_name: norma
+site_name: yesql
 site_author: Sean D Stewart
 copyright: "Copyright &copy; 2021 Sean Stewart"
-site_url: https://python-norma.org
-repo_url: https://github.com/seandstewart/norma
-repo_name: seandstewart/norma
+site_url: https://python-yesql.org
+repo_url: https://github.com/seandstewart/yesql
+repo_name: seandstewart/yesql
 theme:
   name: "material"
   palette:
@@ -42,7 +42,7 @@ markdown_extensions:
 extra:
   social:
     - icon: "fontawesome/brands/github-alt"
-      link: "https://github.com/seandstewart/norma"
+      link: "https://github.com/seandstewart/yesql"
     - icon: "fontawesome/brands/twitter"
       link: "https://twitter.com/MrSeanStewart"
     - icon: "fontawesome/brands/linkedin"

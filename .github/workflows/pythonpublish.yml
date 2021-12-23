@@ -25,7 +25,7 @@ jobs:
     - name: Store dist artifacts
       uses: actions/upload-artifact@v1
       with:
-        name: norma-dist
+        name: yesql-dist
         path: dist
 
   build-sdist:
@@ -43,7 +43,7 @@ jobs:
     - name: Store dist artifacts
       uses: actions/upload-artifact@v1
       with:
-        name: norma-dist
+        name: yesql-dist
         path: dist
 
   deploy:
@@ -58,7 +58,7 @@ jobs:
     - name: Download distribution artifact
       uses: actions/download-artifact@master
       with:
-        name: norma-dist
+        name: yesql-dist
         path: dist
     - name: Install Poetry
       uses: abatilo/actions-poetry@v2.1.3

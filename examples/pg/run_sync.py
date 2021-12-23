@@ -1,4 +1,4 @@
-import norma.dynamic
+import yesql.dynamic
 from db import client, model
 
 
@@ -31,7 +31,7 @@ def run():
 
 def dynamic():
     posts = client.SyncPosts()
-    dyn = norma.dynamic.SyncDynamicQueryLib(posts, schema="blog")
+    dyn = yesql.dynamic.SyncDynamicQueryLib(posts, schema="blog")
     post = model.Post(
         title="My Great Blog Post",
         subtitle="It's super great. Trust me...",

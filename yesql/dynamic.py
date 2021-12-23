@@ -25,11 +25,11 @@ from typing import (
 import pypika
 import typic
 
-from norma.core import support, types, bootstrap
+from yesql.core import support, types, bootstrap
 
 if TYPE_CHECKING:
-    from norma import drivers
-    from norma.core import service  # noqa: F401
+    from yesql import drivers
+    from yesql.core import service  # noqa: F401
 
 __all__ = ("AsyncDynamicQueryLib", "SyncDynamicQueryLib")
 

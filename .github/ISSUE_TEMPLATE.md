@@ -1,4 +1,4 @@
-* norma version:
+* yesql version:
 * Python version:
 * Operating System:
 

@@ -28,7 +28,7 @@ import aiosql.types
 import typic
 
 if TYPE_CHECKING:
-    from norma import drivers
+    from yesql import drivers
 
 
 ModelT = TypeVar("ModelT")

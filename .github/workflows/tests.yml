@@ -87,7 +87,7 @@ jobs:
 
     - name: Test with pytest
       run: |
-        poetry run pytest tests norma --doctest-modules --cov --cov-config=.coveragerc --cov-report=xml
+        poetry run pytest tests yesql --doctest-modules --cov --cov-config=.coveragerc --cov-report=xml
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v2

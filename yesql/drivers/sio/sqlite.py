@@ -10,7 +10,7 @@ import sqlite3
 import aiosql.adapters.sqlite3
 import typic
 
-from norma import types, support
+from yesql import types, support
 
 LOCK: contextvars.ContextVar[Optional[threading.Lock]] = contextvars.ContextVar(
     "sqlite_lock", default=None

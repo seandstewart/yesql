@@ -1,29 +1,29 @@
 import pathlib
 from typing import Iterable
 
-import norma
+import yesql
 
 from .model import Post
 
 QUERIES = pathlib.Path(__file__).resolve().parent / "queries"
 
 
-class AsyncPosts(norma.AsyncQueryService[Post]):
+class AsyncPosts(yesql.AsyncQueryService[Post]):
     """An asyncio-native service for querying blog posts."""
 
-    class metadata(norma.QueryMetadata):
+    class metadata(yesql.QueryMetadata):
         __querylib__ = QUERIES
         __tablename__ = "posts"
         __exclude_fields__ = frozenset(("slug",))
         __scalar_queries__ = frozenset(("add_tags", "remove_tags"))
 
-    @norma.support.coerceable(bulk=True)
-    @norma.support.retry
+    @yesql.support.coerceable(bulk=True)
+    @yesql.support.retry
     async def bulk_create_returning(
         self,
         posts: Iterable[Post],
         *,
-        connection: norma.types.ConnectionT = None,
+        connection: yesql.types.ConnectionT = None,
         coerce: bool = True
     ):
         """An example of overriding the default implementation for a specific use-case.
@@ -41,7 +41,7 @@ class AsyncPosts(norma.AsyncQueryService[Post]):
             return await self.queries.bulk_create_returning(connection, posts=raw)
 
 
-SyncPosts = norma.servicemaker(
+SyncPosts = yesql.servicemaker(
     model=Post,
     querylib=QUERIES,
     tablename="posts",

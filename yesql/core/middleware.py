@@ -20,7 +20,7 @@ def middleware(*names: str):
 
         >>> import dataclasses
         >>> import pathlib
-        >>> import norma
+        >>> import yesql
         >>> from tests.unit.queries import QUERIES
         >>>
         >>>
@@ -29,12 +29,12 @@ def middleware(*names: str):
         ...     bar: str
         ...
         >>>
-        >>> class FooService(norma.AsyncQueryService[Foo]):
+        >>> class FooService(yesql.AsyncQueryService[Foo]):
         ...
-        ...     class metadata(norma.QueryMetadata):
+        ...     class metadata(yesql.QueryMetadata):
         ...         __querylib__ = QUERIES
         ...
-        ...     @norma.middleware("get", "get_cursor")
+        ...     @yesql.middleware("get", "get_cursor")
         ...     async def intercept_gets(
         ...         self,
         ...         query: types.QueryMethodProtocolT,

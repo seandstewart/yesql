@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "norma"
+name = "yesql"
 version = "0.1.0"
-description = "Norma is a SQL-first data manipulation library that will replace your ORM."
+description = "YeSQL is a SQL-first data manipulation library that will replace your ORM."
 authors = ["Sean Stewart <sean_stewart@me.com>"]
 license = "MIT"
 

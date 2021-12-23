@@ -4,7 +4,7 @@ from unittest import mock
 import asyncpg
 import pytest
 
-from norma.drivers.aio import postgres
+from yesql.drivers.aio import postgres
 
 pytestmark = pytest.mark.asyncio
 

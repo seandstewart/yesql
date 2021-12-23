@@ -12,7 +12,7 @@ import psycopg.types.json as pgjson
 import psycopg.rows as pgrows
 import typic
 
-from norma.core import types, support
+from yesql.core import types, support
 
 LOCK = threading.Lock()
 CONNECTOR: contextvars.ContextVar[Optional[PsycoPGConnector]] = contextvars.ContextVar(

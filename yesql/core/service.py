@@ -28,7 +28,7 @@ from aiosql.types import QueryFn
 from . import support, types, bootstrap, inspection
 
 if TYPE_CHECKING:
-    from norma import drivers
+    from yesql import drivers
 
 __all__ = (
     "AsyncQueryService",
@@ -159,9 +159,9 @@ class BaseQueryService(types.ServiceProtocolT[_MT]):
 
     _DRIVER_TO_AIOSQL = {
         "asyncpg": "asyncpg",
-        "aiosqlite": "norma.drivers.aio.sqlite.AIOSQLiteReturningDriverAdaptor",
+        "aiosqlite": "yesql.drivers.aio.sqlite.AIOSQLiteReturningDriverAdaptor",
         "psycopg": "psycopg2",
-        "sqlite": "norma.drivers.sio.sqlite.SQLite3ReturningDriverAdaptor",
+        "sqlite": "yesql.drivers.sio.sqlite.SQLite3ReturningDriverAdaptor",
     }
 
     @classmethod

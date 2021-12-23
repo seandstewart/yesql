@@ -3,7 +3,7 @@ import concurrent.futures
 import sqlite3
 import pytest
 
-from norma.drivers.sio import sqlite
+from yesql.drivers.sio import sqlite
 
 pytestmark = pytest.mark.asyncio
 

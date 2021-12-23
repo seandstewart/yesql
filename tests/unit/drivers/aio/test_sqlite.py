@@ -3,7 +3,7 @@ import asyncio
 import aiosqlite
 import pytest
 
-from norma.drivers.aio import sqlite
+from yesql.drivers.aio import sqlite
 
 pytestmark = pytest.mark.asyncio
 

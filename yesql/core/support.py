@@ -35,7 +35,7 @@ import typic
 from . import types
 
 if TYPE_CHECKING:
-    from norma import drivers
+    from yesql import drivers
 
 __all__ = (
     "coerceable",
@@ -491,16 +491,16 @@ def _try_import(modname: str, *, driver: str) -> ModuleType:
 
 
 _DRIVER_TO_CONNECTOR: Mapping[drivers.SupportedDriversT, str] = {
-    "aiosqlite": "norma.drivers.aio.sqlite.AIOSQLiteConnector",
-    "asyncpg": "norma.drivers.aio.postgres.AsyncPGConnector",
-    "psycopg": "norma.drivers.sio.postgres.PsycoPGConnector",
-    "sqlite": "norma.drivers.sio.sqlite.SQLiteConnector",
+    "aiosqlite": "yesql.drivers.aio.sqlite.AIOSQLiteConnector",
+    "asyncpg": "yesql.drivers.aio.postgres.AsyncPGConnector",
+    "psycopg": "yesql.drivers.sio.postgres.PsycoPGConnector",
+    "sqlite": "yesql.drivers.sio.sqlite.SQLiteConnector",
 }
 
 _DRIVER_TO_CURSOR_PROXY: Mapping[drivers.SupportedDriversT, str] = {
-    "aiosqlite": "norma.drivers.aio.sqlite._AIOSQLiteCursorProxy",
-    "psycopg": "norma.drivers.sio.postgres._PsycoPGCursorProxy",
-    "sqlite": "norma.drivers.sio.sqlite._SQLite3CursorProxy",
+    "aiosqlite": "yesql.drivers.aio.sqlite._AIOSQLiteCursorProxy",
+    "psycopg": "yesql.drivers.sio.postgres._PsycoPGCursorProxy",
+    "sqlite": "yesql.drivers.sio.sqlite._SQLite3CursorProxy",
 }
 
 

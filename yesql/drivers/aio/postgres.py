@@ -9,7 +9,7 @@ import asyncpg
 import asyncpg.transaction
 import typic
 
-from norma.core import types, support
+from yesql.core import types, support
 
 LOCK: contextvars.ContextVar[Optional[asyncio.Lock]] = contextvars.ContextVar(
     "pg_lock", default=None

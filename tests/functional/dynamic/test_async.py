@@ -4,7 +4,7 @@ import asyncpg
 import pytest
 
 from examples.pg.db import client
-from norma import dynamic
+from yesql import dynamic
 from tests.functional.postgres import factories
 
 pytestmark = pytest.mark.asyncio

@@ -5,7 +5,7 @@ from unittest import mock
 import psycopg
 import pytest
 
-from norma.drivers.sio import postgres
+from yesql.drivers.sio import postgres
 
 
 @pytest.fixture(autouse=True)

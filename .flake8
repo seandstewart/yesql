@@ -7,4 +7,4 @@ exclude =
     */__init__.py
     .venv/*
 per-file-ignores =
-    norma/api.py: F403, F405
+    yesql/api.py: F403, F405
