@@ -1,7 +1,8 @@
-# NORMA
+# YeSQL
 
-NORMA is the No ORM Approach to managing your data. Write your SQL, define your
-in-memory data structures, and go.
+Say YES to SQL with YeSQL. YeSQL eliminates boilerplate without the baggage of an 
+expensive or clunky ORM. Simply write your SQL and point YeSQL to the directory, and it 
+does all the rest.
 
 ## Quickstart
 
@@ -32,9 +33,9 @@ TODO
    reasonable means of mitigation.
 
 
-## Why NORMA?
+## Why YeSQL?
 
-NORMA takes a SQL-first approach to data managment:
+YeSQL takes a SQL-first approach to data management:
 
 1. *Focus on your SQL and your database.*
    - Reduce developer overhead by having one less middleman between you and your data.
@@ -60,8 +61,8 @@ NORMA takes a SQL-first approach to data managment:
   - [x] Async PostgreSQL (via asyncpg)
   - [x] Async SQLite (via aiosqlite)
   - [ ] Async MySQL
-  - [ ] Sync PostgreSQL
-  - [ ] Sync SQLite
+  - [x] Sync PostgreSQL
+  - [x] Sync SQLite
   - [ ] Sync MySQL
 
 ## License
