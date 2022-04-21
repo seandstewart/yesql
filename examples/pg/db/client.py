@@ -1,5 +1,5 @@
 import pathlib
-from typing import Iterable
+from typing import Iterable, cast
 
 import yesql
 
@@ -8,17 +8,14 @@ from .model import Post
 QUERIES = pathlib.Path(__file__).resolve().parent / "queries"
 
 
-class AsyncPosts(yesql.AsyncQueryService[Post]):
+class AsyncPosts(yesql.AsyncQueryRepository[Post]):
     """An asyncio-native service for querying blog posts."""
 
     class metadata(yesql.QueryMetadata):
         __querylib__ = QUERIES
         __tablename__ = "posts"
         __exclude_fields__ = frozenset(("slug",))
-        __scalar_queries__ = frozenset(("add_tags", "remove_tags"))
 
-    @yesql.support.coerceable(bulk=True)
-    @yesql.support.retry
     async def bulk_create_returning(
         self,
         posts: Iterable[Post],
@@ -36,16 +33,22 @@ class AsyncPosts(yesql.AsyncQueryService[Post]):
         but as you can see, it's quite straight-forward to customize your query methods
         if necessary.
         """
-        raw = [self.get_kvs(p) for p in posts]
-        async with self.connector.transaction(connection=connection) as connection:
-            return await self.queries.bulk_create_returning(connection, posts=raw)
+        query = cast(yesql.parse.QueryDatum, self.queries.mutate.bulk_create_returning)
+        return await self.executor.many(
+            query,
+            posts=[self.get_kvs(p) for p in posts],
+            connection=connection,
+            transaction=True,
+            coerce=coerce,
+            deserializer=self.serdes.bulk_deserializer,
+        )
 
 
 SyncPosts = yesql.servicemaker(
     model=Post,
     querylib=QUERIES,
     tablename="posts",
-    driver="psycopg",
+    isaio=False,
     exclude_fields=frozenset(("slug",)),
     scalar_queries=frozenset(("add_tags",)),
 )

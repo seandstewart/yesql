@@ -1,2 +1,2 @@
 # flake8: noqa
-from tests.functional.postgres.conftest import *
+from tests.integration.repository.postgresql.conftest import *

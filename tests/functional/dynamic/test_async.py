@@ -4,26 +4,27 @@ import asyncpg
 import pytest
 
 from examples.pg.db import client
+from tests.integration.repository.postgresql import factories
 from yesql import dynamic
-from tests.functional.postgres import factories
 
 pytestmark = pytest.mark.asyncio
 
 
 @pytest.fixture(scope="module")
-def posts() -> client.AsyncPosts:
-    return client.AsyncPosts()
+async def posts() -> client.AsyncPosts:
+    async with client.AsyncPosts() as posts:
+        yield posts
 
 
 @pytest.fixture
 async def session(posts) -> asyncpg.Connection:
-    async with posts.connector.transaction(rollback=True) as c:
+    async with posts.executor.transaction(rollback=True) as c:
         yield c
 
 
 @pytest.fixture(scope="module")
-def queries(posts) -> dynamic.AsyncDynamicQueryLib:
-    return dynamic.AsyncDynamicQueryLib(posts, schema="blog")
+def queries(posts) -> dynamic.DynamicQueryService:
+    return dynamic.DynamicQueryService(posts, schema="blog")
 
 
 async def test_execute(queries, session):
@@ -48,7 +49,8 @@ async def test_execute_cursor(queries, session):
         queries.table.id.isin([c.id for c in created])
     )
     async with queries.execute_cursor(query, connection=session) as cursor:
-        found = await cursor.fetch(len(created))
+        response = await cursor.fetch(len(created))
+        found = queries.service.serdes.bulk_deserializer(response)
     # Then
     assert found == created
 
@@ -56,22 +58,22 @@ async def test_execute_cursor(queries, session):
 async def test_select_one(queries, session):
     # Given
     created = await queries.service.create(
-        model=factories.PostFactory.create(), connection=session
+        instance=factories.PostFactory.create(), connection=session
     )
     # When
-    found = await queries.select(connection=session, id=created.id, rtype="one")
+    found = await queries.select(connection=session, id=created.id, modifier="one")
     # Then
     assert found == created
 
 
-async def test_select_val(queries, session):
+async def test_select_scalar(queries, session):
     # Given
     created = await queries.service.create(
-        model=factories.PostFactory.create(), connection=session
+        instance=factories.PostFactory.create(), connection=session
     )
     # When
     id = await queries.select(
-        "id", title=created.title, rtype="val", connection=session
+        "id", title=created.title, connection=session, modifier="scalar"
     )
     # Then
     assert id == created.id

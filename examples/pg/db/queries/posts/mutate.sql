@@ -1,4 +1,4 @@
--- name: create<!
+-- :name create :one
 -- Create a new blog post :)
 INSERT INTO blog.posts (
     title,
@@ -18,7 +18,7 @@ VALUES (
 )
 RETURNING *;
 
--- name: bulk_create*!
+-- :name bulk_create :multi
 -- Create a new blog post :)
 INSERT INTO blog.posts (
     title,
@@ -37,7 +37,7 @@ VALUES (
     :publication_date
 );
 
--- name: bulk_create_returning
+-- :name bulk_create_returning :many
 -- Create a new blog post :)
 WITH new_posts AS (
     SELECT
@@ -67,7 +67,7 @@ INSERT INTO blog.posts (
 ) SELECT * FROM new_posts
 RETURNING *;
 
--- name: update<!
+-- :name update :one
 -- Update a post with all new data.
 UPDATE blog.posts
 SET
@@ -80,44 +80,44 @@ SET
 WHERE id = :id
 RETURNING *;
 
--- name: delete<!
+-- :name delete :one
 -- Delete a post.
-DELETE FROM blog.posts WHERE id = :id RETURNING *;
+DELETE FROM blog.posts WHERE id = :id RETURNING *, current_timestamp;
 
--- name: publish<!
+-- :name publish :one
 -- Set the publication date for a blog post.
 UPDATE blog.posts
 SET publication_date = coalesce(:publication_date::date, CURRENT_DATE)
 WHERE id = :id
 RETURNING *;
 
--- name: retract<!
+-- :name retract :one
 -- "Retract" a blog post by clearing out the publication_date.
 UPDATE blog.posts
 SET publication_date = null
 WHERE id = :id
 RETURNING *;
 
--- name: add_tags<!
+-- :name add_tags :scalar
 -- Add new tags for a blog post.
 UPDATE blog.posts
 SET tags = (select array(select distinct unnest(tags || :tags::text[])))
 WHERE id = :id
 RETURNING tags;
 
--- name: remove_tags<!
+-- :name remove_tag :scalar
 -- Remove tags for this blog post
 UPDATE blog.posts
 SET tags = (select array(select unnest(tags) except select unnest(:tags::text[])))
 WHERE id = :id
 RETURNING tags;
 
--- name: clear_tags!
+-- :name clear_tags :affected
 UPDATE blog.posts
 SET tags = '{}'::text[]
 WHERE id = :id;
 
--- name: set_body!
+-- :name set_body :affected
 UPDATE blog.posts
 SET body = :body
 WHERE id = :id;

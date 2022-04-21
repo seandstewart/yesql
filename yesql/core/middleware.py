@@ -1,3 +1,5 @@
+from typing_extensions import TypeGuard
+
 from . import types
 
 __all__ = ("middleware",)
@@ -29,28 +31,41 @@ def middleware(*names: str):
         ...     bar: str
         ...
         >>>
-        >>> class FooService(yesql.AsyncQueryService[Foo]):
+        >>> class FooService(yesql.AsyncQueryRepository[Foo]):
         ...
         ...     class metadata(yesql.QueryMetadata):
         ...         __querylib__ = QUERIES
         ...
         ...     @yesql.middleware("get", "get_cursor")
         ...     async def intercept_gets(
-        ...         self,
-        ...         query: types.QueryMethodProtocolT,
+        ...         statement: yesql.Statement,
         ...         *args,
-        ...         connection: types.ConnectionT = None,
+        ...         connection: types.ConnectionT | None = None,
+        ...         timeout: float = 10,
+        ...         transaction: bool = True,
+        ...         rollback: bool = False,
         ...         **kwargs
         ...    ) -> Foo:
-        ...         print(f"Calling {query.__name__!r}.")
+        ...         print(f"Executing {statement.query!r}.")
         ...         ...  # do stuff to foo
-        ...         return await query(self, *args, connection=connection, **kwargs)
+        ...         return await statement.execute(
+        ...             *args,
+        ...             connection=connection,
+        ...             timeout=timeout,
+        ...             transaction=transaction,
+        ...             rollback=rollback,
+        ...             **kwargs,
+        ...         )
         ...
 
     """
 
-    def _middleware_wrapper(func: types.MiddelwareMethodProtocolT):
+    def _middleware_wrapper(func: types.MiddlewareMethodProtocolT):
         func.__intercepts__ = names
         return func
 
     return _middleware_wrapper
+
+
+def ismiddleware(o) -> TypeGuard[types.MiddlewareMethodProtocolT]:
+    return callable(o) and hasattr(o, "__intercepts__")

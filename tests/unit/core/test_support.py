@@ -1,10 +1,9 @@
 import dataclasses
 import inspect
-from typing import Iterable, NamedTuple, Any
+from typing import Any, NamedTuple
 from unittest import mock
 
 import pytest
-import typic
 
 import yesql
 
@@ -20,14 +19,8 @@ class TestableError(Exception):
     ...
 
 
-class TestableConnector:
+class TestableExecutor:
     TRANSIENT = (TestableError,)
-
-
-class TestableService:
-    protocol = typic.protocol(Foo, is_optional=True)
-    bulk_protocol = typic.protocol(Iterable[Foo])
-    connector = TestableConnector()
 
 
 class Params(NamedTuple):
@@ -45,88 +38,6 @@ def func(request):
         yield func
 
 
-class TestCoerceable:
-    @staticmethod
-    @pytest.mark.parametrize(
-        argnames="func",
-        argvalues=[
-            Params(False, return_value={"bar": 1}),
-            Params(True, return_value={"bar": 1}),
-        ],
-        indirect=True,
-    )
-    async def test_coerceable_coerce(func):
-        # Given
-        self = TestableService()
-        # When
-        wrapped = yesql.support.coerceable(func)
-        result = wrapped(self)
-        if inspect.isawaitable(result):
-            result = await result
-        # Then
-        assert result == Foo(**func.return_value)
-
-    @staticmethod
-    @pytest.mark.parametrize(
-        argnames="func",
-        argvalues=[
-            Params(False, return_value={"bar": 1}),
-            Params(True, return_value={"bar": 1}),
-        ],
-        indirect=True,
-    )
-    async def test_coerceable_no_coerce(func):
-        # Given
-        self = TestableService()
-        # When
-        wrapped = yesql.support.coerceable(func)
-        result = wrapped(self, coerce=False)
-        if inspect.isawaitable(result):
-            result = await result
-        # Then
-        assert result == func.return_value
-
-    @staticmethod
-    @pytest.mark.parametrize(
-        argnames="func",
-        argvalues=[
-            Params(False, return_value=[{"bar": 1}]),
-            Params(True, return_value=[{"bar": 1}]),
-        ],
-        indirect=True,
-    )
-    async def test_bulk_coerceable_coerce(func):
-        # Given
-        self = TestableService()
-        # When
-        wrapped = yesql.support.coerceable(func, bulk=True)
-        result = wrapped(self)
-        if inspect.isawaitable(result):
-            result = await result
-        # Then
-        assert result == [Foo(**r) for r in func.return_value]
-
-    @staticmethod
-    @pytest.mark.parametrize(
-        argnames="func",
-        argvalues=[
-            Params(False, return_value={"bar": 1}),
-            Params(True, return_value={"bar": 1}),
-        ],
-        indirect=True,
-    )
-    async def test_bulk_coerceable_no_coerce(func):
-        # Given
-        self = TestableService()
-        # When
-        wrapped = yesql.support.coerceable(func, bulk=True)
-        result = wrapped(self, coerce=False)
-        if inspect.isawaitable(result):
-            result = await result
-        # Then
-        assert result == func.return_value
-
-
 class TestRetry:
     @staticmethod
     @pytest.mark.parametrize(
@@ -136,10 +47,11 @@ class TestRetry:
             Params(True, return_value={"bar": 1}),
         ],
         indirect=True,
+        ids=["sync", "async"],
     )
     async def test_retry_passthru(func):
         # Given
-        self = TestableService()
+        self = TestableExecutor()
         # When
         wrapped = yesql.support.retry(func)
         result = wrapped(self)
@@ -156,10 +68,11 @@ class TestRetry:
             Params(True, side_effect=[TestableError, TestableError, {"bar": 1}]),
         ],
         indirect=True,
+        ids=["sync", "async"],
     )
     async def test_retry_succeeds(func):
         # Given
-        self = TestableService()
+        self = TestableExecutor()
         # When
         wrapped = yesql.support.retry(func)
         result = wrapped(self)
@@ -176,10 +89,11 @@ class TestRetry:
             Params(True, side_effect=TestableError),
         ],
         indirect=True,
+        ids=["sync", "async"],
     )
     async def test_retry_reraise(func):
         # Given
-        self = TestableService()
+        self = TestableExecutor()
         # When
         wrapped = yesql.support.retry(func, retries=1)
         # Then
@@ -213,10 +127,11 @@ class TestRetryCursor:
             Params(False, side_effect=[TestableError, TestableError, True]),
         ],
         indirect=True,
+        ids=["async-success", "async-errors", "sync-success", "sync-errors"],
     )
     async def test_retry_cursor(self, func):
         # Given
-        svc = TestableService()
+        svc = TestableExecutor()
         # When
         wrapped = yesql.support.retry_cursor(func)
         result = await self._exhaust_mock(wrapped, svc)
@@ -233,7 +148,7 @@ class TestRetryCursor:
     )
     async def test_retry_cursor_reraise(self, func):
         # Given
-        svc = TestableService()
+        svc = TestableExecutor()
         # When
         wrapped = yesql.support.retry_cursor(func, retries=2)
         with pytest.raises(TestableError):

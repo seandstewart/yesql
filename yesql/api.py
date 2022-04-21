@@ -2,27 +2,37 @@ from __future__ import annotations
 
 import functools
 import pathlib
-from typing import Union, Type, Tuple, Any
+from typing import Any, Tuple, Type
 
 import inflection
 import typic
 
-from .core import support, types
-from .core.service import *
+from .core import drivers, parse, support, types
 from .core.middleware import *
-from . import drivers
-
+from .repository import *
+from .uow import *
 
 __all__ = (
-    "AsyncQueryService",
-    "BaseQueryService",
+    "Affected",
+    "AsyncQueryRepository",
+    "BaseQueryRepository",
     "drivers",
     "ExplainFormatT",
+    "Many",
+    "ManyCursor",
     "middleware",
+    "Multi",
+    "MultiCursor",
+    "parse",
     "QueryMetadata",
+    "Raw",
+    "RawCursor",
     "service",
     "servicemaker",
-    "SyncQueryService",
+    "Scalar",
+    "Statement",
+    "statements",
+    "SyncQueryRepository",
     "support",
     "types",
 )
@@ -33,13 +43,13 @@ def service(
     querylib: pathlib.Path,
     *,
     tablename: str = None,
-    driver: drivers.SupportedDriversT = "asyncpg",
+    dialect: drivers.SupportedDialectsT = "postgresql",
     exclude_fields: frozenset[str] = frozenset(),
     scalar_queries: frozenset[str] = frozenset(),
-    connector: types.AnyConnectorProtocolT[types.ConnectionT] = None,
-    base_service: Type[BaseQueryService[types.ModelT]] = None,
+    executor: drivers.BaseQueryExecutor = None,
+    base_service: Type[BaseQueryRepository[types.ModelT]] = None,
     **connect_kwargs,
-) -> Union[AsyncQueryService[types.ModelT], SyncQueryService[types.ModelT]]:
+) -> AsyncQueryRepository[types.ModelT] | SyncQueryRepository[types.ModelT]:
     """Create and instantiate a Query Service object.
 
     Args:
@@ -49,50 +59,47 @@ def service(
             The directory path pointing to your queries.
         tablename: optional
             The name of the table for this query service.
-        driver: defaults "asyncpg"
-            The client-library for connecting to your database.
+        dialect: defaults "postgresql"
+            The SQL Dialect of your database.
         exclude_fields: optional
             Any fields which should be automatically excluded when dumping your model.
         scalar_queries: optional
             Any queries in your library that do not resolve to your model.
         base_service: optional
             Optionally provide your own base class for your query service.
-        connector: optional
-            An external connector protocol to instantiate your service with.
-            (If none is provided, we will determine the correct protocol based upon your driver.)
+        executor: optional
+            An externally-managed query executor to attach to the service.
         **connect_kwargs:
             Any connection parameters to pass to the downstream connector.
 
     Returns:
         An instance of a new Query Service.
     """
-    Service = servicemaker(
+    Repository = servicemaker(
         model=model,
         querylib=querylib,
         tablename=tablename,
-        driver=driver,
+        dialect=dialect,
         exclude_fields=exclude_fields,
         scalar_queries=scalar_queries,
         base_service=base_service,  # type: ignore
     )
-    return Service(connector=connector, **connect_kwargs)  # type: ignore
+    return Repository(executor=executor, **connect_kwargs)  # type: ignore
 
 
-@functools.lru_cache(maxsize=None)  # type: ignore
+@functools.cache
 def servicemaker(
     model: types.ModelT,
     querylib: pathlib.Path,
     *,
     tablename: str = None,
-    driver: drivers.SupportedDriversT = "asyncpg",
+    dialect: drivers.SupportedDialectsT = "postgresql",
+    isaio: bool = True,
     exclude_fields: frozenset[str] = frozenset(),
     scalar_queries: frozenset[str] = frozenset(),
-    base_service: Type[BaseQueryService] = None,
-    custom_queries: Tuple[types.QueryMethodProtocolT, ...] = (),
-) -> Union[
-    Type[AsyncQueryService[types.ModelT]],
-    Type[SyncQueryService[types.ModelT]],
-]:
+    base_repository: Type[BaseQueryRepository] = None,
+    custom_queries: Tuple[types.QueryExecutorMethodT, ...] = (),
+) -> Type[AsyncQueryRepository[types.ModelT]] | Type[SyncQueryRepository[types.ModelT]]:
     """A factory for producing a Query Service class which can be instantiated later.
 
     Notes:
@@ -106,13 +113,15 @@ def servicemaker(
             The directory path pointing to your queries.
         tablename: optional
             The name of the table for this query service.
-        driver: defaults "asyncpg"
-            The client-library for connecting to your database.
+        dialect: defaults "postgresql"
+            The SQL dialect for connecting to your database.
+        isaio: defaults True
+            Whether to use asyncio-based execution or syncio-based.
         exclude_fields: optional
             Any fields which should be automatically excluded when dumping your model.
         scalar_queries: optional
             Any queries in your library that do not resolve to your model.
-        base_service: optional
+        base_repository: optional
             Optionally provide your own base class for your query service.
         custom_queries: optional
             Optionally provide custom implementations of query methods.
@@ -120,28 +129,25 @@ def servicemaker(
     Returns:
         A new query service class.
     """
-    BaseService = base_service or (
-        SyncQueryService if driver in _SYNC_DRIVERS else AsyncQueryService
+    BaseRepository = base_repository or (
+        AsyncQueryRepository if isaio else SyncQueryRepository
     )
     tablename = tablename or typic.get_name(model).lower()  # type: ignore
     Metadata = type(
         f"{tablename.title()}Metadata",
-        (BaseService.metadata,),
+        (BaseRepository.metadata,),
         {
             "__querylib__": querylib,
             "__tablename__": tablename,
-            "__driver__": driver,
+            "__dialect__": dialect,
             "__exclude_fields__": exclude_fields,
             "__scalar_queries__": scalar_queries,
         },
     )
     namespace: dict[str, Any] = {f.__name__: f for f in custom_queries}
     namespace.update(metadata=Metadata, model=model)
-    service_name = inflection.camelize(
+    repo_name = inflection.camelize(
         inflection.pluralize(tablename), uppercase_first_letter=True
     ).title()
-    Service = type(service_name, (BaseService,), namespace)
-    return Service
-
-
-_SYNC_DRIVERS = {"sqlite", "psycopg"}
+    Repository = type(repo_name, (BaseRepository,), namespace)
+    return Repository
