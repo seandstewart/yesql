@@ -82,7 +82,7 @@ def sync_psycopg_executor(database):
     ) as executor:
         pool: pgpool.ConnectionPool = executor.pool
         c: psycopg.Connection
-        with pool.connection() as c:
+        with pool.connection(timeout=10) as c:
             c.execute(PG_TEST_SCHEMA)
         yield executor
 

@@ -346,7 +346,8 @@ class PsycoPGQueryExecutor(base.BaseQueryExecutor[psycopg.Connection]):
                 return
             self.pool = create_sync_pool(**self.pool_kwargs)
             self.pool.kwargs.setdefault("row_factory", pgrows.namedtuple_row)
-            self.pool.wait()
+            # FIXME: Sporadically times out if we try to eagerly wait for pool to fill.
+            # self.pool.wait()
 
     def teardown(self, *, timeout: int = 10):
         if not self.managed or not self.pool:

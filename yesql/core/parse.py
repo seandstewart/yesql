@@ -7,7 +7,7 @@ import inspect
 import pathlib
 import re
 import warnings
-from typing import TYPE_CHECKING, Deque, Final, Literal, cast
+from typing import TYPE_CHECKING, Deque, Final, Literal, Optional, Tuple, cast
 
 import sqlparse
 import typic
@@ -47,7 +47,7 @@ def parse(
             modname = modname or queries.stem
         else:
             path = pathlib.Path.cwd()
-            modname = "<locals>"
+            modname = modname or "<locals>"
         module = parse_module(queries=queries, modname=modname, driver=driver)
         return QueryPackage(name=modname, path=path, modules={module.name: module})
     # Otherwise, traverse the package with DFS, building the query tree.
@@ -63,6 +63,7 @@ def parse(
                 cpkg = QueryPackage(name=child.stem, modules={}, path=child)
                 stack.append(cpkg)
                 pkg.packages[cpkg.name] = cpkg
+                continue
             # Otherwise, parse the module and attach it to the package.
             module = parse_module(queries=child, modname=child.stem, driver=driver)
             pkg.modules[module.name] = module
@@ -100,12 +101,11 @@ def get_query_datum(
     if not name:
         return None
 
-    sql, sig, modifier, remapping = process_sql(
-        statement,
-        start,
-        modifier,
-        driver,
-    )
+    processed: _ProcessedT = process_sql(statement, start, driver)
+    if processed is None:
+        return None
+
+    sql, sig, remapping = processed
     return QueryDatum(
         name=name,
         doc=doc,
@@ -117,14 +117,24 @@ def get_query_datum(
 
 
 def get_preamble(statement: sqlparse.sql.Statement) -> tuple[str, str, int]:
+    docs: list[str]
     lead, docs, i = "", [], 0
-    for i, token in enumerate(statement.tokens):
-        # Stop when we hit the first part of the actual SQL statement.
+    gen = _iter_comments(statement)
+    i, lead = next(gen, (0, ""))
+    if not lead:
+        return "", "", 0
+    docs.extend(c for (i, c) in gen)
+    return lead, "\n".join(docs), i
+
+
+def _iter_comments(statement: sqlparse.sql.Statement):
+    for ix, token in enumerate(statement.tokens):
         if token.is_keyword:
             break
         # Skip any newline or whitespace.
         if not isinstance(token, sqlparse.sql.Comment):
             continue
+        # Test whether we have a multiline comment.
         token, ismultiline = next(
             (
                 (i, multi)
@@ -133,31 +143,33 @@ def get_preamble(statement: sqlparse.sql.Statement) -> tuple[str, str, int]:
             ),
             (token, False),
         )
-        # Process multline docs
+        # If we do, extract it and yield from that.
         if ismultiline:
-            comments = token.value.rstrip("/**").lstrip("**/").strip().splitlines()
-            if not lead:
-                lead, comments = comments[0], comments[1:]
-            docs.extend(comments)
-            continue
-        comment = _clean_comment(token.value)
-        if not lead:
-            lead = comment
-            continue
-
-        docs.append(comment)
-
-    return lead, "\n".join(docs), i
+            yield from (
+                (ix, cs)
+                for c in (
+                    token.value.removeprefix("/**")
+                    .removesuffix("**/")
+                    .strip()
+                    .splitlines()
+                )
+                if (cs := c.strip())
+            )
+        # Otherwise, yield from the token group of single-line comments.
+        else:
+            yield from ((ix, c) for t in token.tokens if (c := _clean_comment(t.value)))
 
 
 def get_funcop(lead: str) -> tuple[str | None, ModifierT]:
     """Extract the name of the function and the fetch-modifier."""
 
     match = FUNC_PATTERN.match(lead)
+    if not match:
+        return None, MANY
     name = match.group("name")
     modifier = match.group("modifier") or MANY
     if modifier not in MODIFIERS:
-        if name not in _SHORT_TO_LONG:
+        if modifier not in _SHORT_TO_LONG:
             warnings.warn(
                 f"Unrecognized query modifier: {modifier!r}. "
                 f"Recognized modifiers are: {(*MODIFIERS,)}. "
@@ -173,9 +185,8 @@ def get_funcop(lead: str) -> tuple[str | None, ModifierT]:
 def process_sql(
     statement: sqlparse.sql.Statement,
     start: int,
-    modifier: ModifierT,
     driver: SupportedDriversT,
-) -> tuple[str, inspect.Signature, ModifierT, dict | None] | None:
+) -> _ProcessedT:
     op = statement.get_type()
     if op is None:
         return None
@@ -184,11 +195,10 @@ def process_sql(
         pos, kwd = _gather_parameters(token)
         posargs.update(pos)
         kwdargs.update(kwd)
-        continue
 
     sig = inspect.Signature([*posargs.values(), *kwdargs.values()])
     sql, remapping = _normalize_parameters(statement, driver, posargs, kwdargs)
-    return sql, sig, modifier, remapping
+    return sql, sig, remapping
 
 
 def _gather_parameters(
@@ -220,11 +230,14 @@ def _normalize_parameters(
     kwdargs: dict[str, inspect.Parameter],
 ) -> tuple[str, dict[str, int] | None]:
     sql, remapping = str(statement), None
-    if driver == "asyncpg" and kwdargs:
+    if not kwdargs:
+        return sql, remapping
+
+    if driver == "asyncpg":
         remapping = {}
         start = 1
         if posargs:
-            start = [int(a.replace("arg", "")) for a in posargs][-1]
+            start = [int(a.name.replace("arg", "")) for a in posargs.values()][-1] + 1
         for i, (name, param) in enumerate(kwdargs.items(), start=start):
             sql = re.sub(name, f"${i}", sql)
             remapping[param.name] = i
@@ -235,7 +248,7 @@ def _normalize_parameters(
 
 
 def _clean_comment(comment: str) -> str:
-    return comment.lstrip(_PRE).lstrip()
+    return comment.strip().removeprefix(_PRE).strip()
 
 
 _PRE = "--"
@@ -263,6 +276,7 @@ _SHORT_TO_LONG: dict[str, ModifierT] = {
     "#": AFFECTED,
     "~": RAW,
 }
+_ProcessedT = Optional[Tuple[str, inspect.Signature, Optional[dict]]]
 
 
 @typic.slotted(dict=False, weakref=True)
