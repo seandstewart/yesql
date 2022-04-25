@@ -110,7 +110,7 @@ class AsyncPsycoPGQueryExecutor(base.BaseQueryExecutor[psycopg.AsyncConnection])
         timeout: float = 10,
         connection: psycopg.AsyncConnection = None,
         rollback: bool = False,
-        savepoint_name: str | None = None,
+        savepoint_name: Optional[str] = None,
     ) -> AsyncIterator[psycopg.AsyncConnection]:
         conn: psycopg.AsyncConnection
         async with self.connection(timeout=timeout, connection=connection) as conn:
@@ -380,7 +380,7 @@ class PsycoPGQueryExecutor(base.BaseQueryExecutor[psycopg.Connection]):
         timeout: float = 10,
         connection: psycopg.Connection = None,
         rollback: bool = False,
-        savepoint_name: str | None = None,
+        savepoint_name: Optional[str] = None,
         **_,
     ) -> Iterator[psycopg.Connection]:
         conn: psycopg.Connection
@@ -596,7 +596,7 @@ class PsycoPGPoolSettings:
     dsn: Optional[typic.DSN] = None
     min_size: int = 0
     max_size: int = 10
-    name: str | None = None
+    name: Optional[str] = None
     timeout: int = 0
     max_lifetime: float = 60 * 60.0
     max_idle: float = 10 * 60.0
@@ -615,12 +615,12 @@ class PsycoPGConnectionSettings:
     """Settings to pass into the asyncpg connection constructor."""
 
     dsn: typic.DSN | None = None
-    dbname: str | None = None
-    host: str | None = None
-    port: str | None = None
-    user: str | None = None
-    password: typic.SecretStr | None = None
-    passfile: typic.SecretStr | None = None
+    dbname: Optional[str] = None
+    host: Optional[str] = None
+    port: Optional[str] = None
+    user: Optional[str] = None
+    password: Optional[typic.SecretStr] = None
+    passfile: Optional[typic.SecretStr] = None
     autocommit: bool = False
 
 
