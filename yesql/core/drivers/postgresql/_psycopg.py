@@ -614,7 +614,7 @@ class PsycoPGPoolSettings:
 class PsycoPGConnectionSettings:
     """Settings to pass into the asyncpg connection constructor."""
 
-    dsn: typic.DSN | None = None
+    dsn: Optional[typic.DSN] = None
     dbname: Optional[str] = None
     host: Optional[str] = None
     port: Optional[str] = None
