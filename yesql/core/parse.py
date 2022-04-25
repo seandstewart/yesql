@@ -31,7 +31,7 @@ __all__ = (
 )
 
 
-@functools.cache
+@functools.lru_cache(maxsize=None)
 def parse(
     queries: str | pathlib.Path,
     *,

@@ -87,7 +87,7 @@ def service(
     return Repository(executor=executor, **connect_kwargs)  # type: ignore
 
 
-@functools.cache
+@functools.lru_cache(maxsize=None)
 def servicemaker(
     model: types.ModelT,
     querylib: pathlib.Path,
