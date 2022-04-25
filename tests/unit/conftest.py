@@ -33,17 +33,6 @@ def MockAsyncPGPool(MockAsyncPGConnection):
 
 
 @pytest.fixture(scope="package", autouse=True)
-def MockAIOSQLiteConnection():
-    with mock.patch("aiosqlite.Connection", autospec=True) as mconn:
-        inst = mconn.return_value
-        inst.__aenter__.return_value = inst
-        inst.execute.side_effect = mock.AsyncMock()
-        with mock.patch("aiosqlite.connect", autospec=True) as mmconn:
-            mmconn.return_value = inst
-            yield mconn
-
-
-@pytest.fixture(scope="package", autouse=True)
 def MockPsycoPGConnection():
     with mock.patch("psycopg.Connection", autospec=True) as mconn:
         with mock.patch("psycopg.connect", autospec=True) as mmconn:
