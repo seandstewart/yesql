@@ -10,6 +10,7 @@ from typing import (
     Mapping,
     Sequence,
     TypeVar,
+    Union,
 )
 
 from yesql.core import parse
@@ -165,7 +166,7 @@ class BaseQueryExecutor(abc.ABC, Generic[_CT]):
         self,
         query: parse.QueryDatum,
         *,
-        params: Iterable[Sequence | Mapping[str, Any]],
+        params: Iterable[Union[Sequence, Mapping[str, Any]]],
         connection: _CT = None,
         timeout: float = 10,
         transaction: bool = True,
@@ -180,7 +181,7 @@ class BaseQueryExecutor(abc.ABC, Generic[_CT]):
         self,
         query: parse.QueryDatum,
         *,
-        params: Iterable[Sequence | Mapping[str, Any]],
+        params: Iterable[Union[Sequence, Mapping[str, Any]]],
         connection: _CT = None,
         timeout: float = 10,
         transaction: bool = True,

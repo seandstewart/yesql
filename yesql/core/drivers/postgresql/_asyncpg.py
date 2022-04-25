@@ -2,7 +2,16 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from typing import Any, AsyncIterator, Iterable, Mapping, Optional, Sequence, TypeVar
+from typing import (
+    Any,
+    AsyncIterator,
+    Iterable,
+    Mapping,
+    Optional,
+    Sequence,
+    TypeVar,
+    Union,
+)
 
 import asyncpg
 import typic
@@ -214,7 +223,7 @@ class AsyncPGQueryExecutor(base.BaseQueryExecutor):
         self,
         query: parse.QueryDatum,
         *,
-        params: Iterable[Sequence | Mapping[str, Any]],
+        params: Iterable[Union[Sequence, Mapping[str, Any]]],
         connection: asyncpg.Connection = None,
         timeout: float = 10,
         transaction: bool = True,

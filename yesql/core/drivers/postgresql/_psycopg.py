@@ -12,6 +12,7 @@ from typing import (
     Optional,
     Sequence,
     TypeVar,
+    Union,
 )
 
 import psycopg
@@ -231,7 +232,7 @@ class AsyncPsycoPGQueryExecutor(base.BaseQueryExecutor[psycopg.AsyncConnection])
         self,
         query: parse.QueryDatum,
         *,
-        params: Iterable[Sequence | Mapping[str, Any]],
+        params: Iterable[Union[Sequence, Mapping[str, Any]]],
         connection: psycopg.AsyncConnection = None,
         timeout: float = 10,
         transaction: bool = True,
@@ -271,7 +272,7 @@ class AsyncPsycoPGQueryExecutor(base.BaseQueryExecutor[psycopg.AsyncConnection])
         self,
         query: parse.QueryDatum,
         *,
-        params: Iterable[Sequence | Mapping[str, Any]],
+        params: Iterable[Union[Sequence, Mapping[str, Any]]],
         connection: psycopg.AsyncConnection = None,
         timeout: float = 10,
         transaction: bool = True,
@@ -496,7 +497,7 @@ class PsycoPGQueryExecutor(base.BaseQueryExecutor[psycopg.Connection]):
         self,
         query: parse.QueryDatum,
         *,
-        params: Iterable[Sequence | Mapping[str, Any]],
+        params: Iterable[Union[Sequence, Mapping[str, Any]]],
         connection: psycopg.Connection = None,
         timeout: float = 10,
         transaction: bool = True,
@@ -536,7 +537,7 @@ class PsycoPGQueryExecutor(base.BaseQueryExecutor[psycopg.Connection]):
         self,
         query: parse.QueryDatum,
         *,
-        params: Iterable[Sequence | Mapping[str, Any]],
+        params: Iterable[Union[Sequence, Mapping[str, Any]]],
         connection: psycopg.Connection = None,
         timeout: float = 10,
         transaction: bool = True,
