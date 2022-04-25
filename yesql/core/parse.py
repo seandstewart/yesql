@@ -167,18 +167,17 @@ def get_funcop(lead: str) -> tuple[str | None, ModifierT]:
     if not match:
         return None, MANY
     name = match.group("name")
-    modifier = match.group("modifier") or MANY
-    if modifier not in MODIFIERS:
-        if modifier not in _SHORT_TO_LONG:
-            warnings.warn(
-                f"Unrecognized query modifier: {modifier!r}. "
-                f"Recognized modifiers are: {(*MODIFIERS,)}. "
-                f"Defaulting to {MANY!r}.",
-                stacklevel=10,
-            )
-            modifier = MANY
-        else:
-            modifier = _SHORT_TO_LONG[modifier]
+    modifier = match.group("modifier")
+    if not modifier:
+        warnings.warn(
+            f"Unrecognized query modifier: {modifier!r}. "
+            f"Recognized modifiers are: {(*MODIFIERS,)}. "
+            f"Defaulting to {MANY!r}.",
+            stacklevel=10,
+        )
+        modifier = MANY
+    elif modifier in _SHORT_TO_LONG:
+        modifier = _SHORT_TO_LONG[modifier]
     return name, cast(ModifierT, modifier)
 
 
