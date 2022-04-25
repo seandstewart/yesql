@@ -1,7 +1,7 @@
 try:
-    from typing_extensions import TypeGuard
-except (ImportError, ModuleNotFoundError):
     from typing import TypeGuard
+except (ImportError, ModuleNotFoundError):
+    from typing_extensions import TypeGuard
 
 from . import types
 
