@@ -23,6 +23,8 @@ def middleware(*names: str):
 
     Examples:
 
+        >>> from __future__ import annotations
+        >>>
         >>> import dataclasses
         >>> import pathlib
         >>> import yesql
