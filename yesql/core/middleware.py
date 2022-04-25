@@ -45,7 +45,7 @@ def middleware(*names: str):
         ...     async def intercept_gets(
         ...         statement: yesql.Statement,
         ...         *args,
-        ...         connection: types.ConnectionT | None = None,
+        ...         connection: "types.ConnectionT | None" = None,
         ...         timeout: float = 10,
         ...         transaction: bool = True,
         ...         rollback: bool = False,
