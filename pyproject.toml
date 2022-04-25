@@ -19,7 +19,7 @@ mkdocs-material = {version = "^8.0", optional = true}
 mkdocs-awesome-pages-plugin = {version = "^2.5.0", optional = true}
 # Lint
 mypy = {version = "^0.910", optional = true}
-black = {version = "^21.7b0", optional = true}
+black = {version = "^22", optional = true}
 flake8 = {version = "^3.9.2", optional = true}
 # Test
 pytest = {version = "^6.2.4", optional = true}
@@ -54,7 +54,7 @@ mkdocs-material = "^8.0"
 mkdocs-awesome-pages-plugin = "^2.5.0"
 # Lint
 mypy = "^0.910"
-black = "^21.7b0"
+black = "^22"
 flake8 = "^3.9.2"
 # Test
 pytest = "^6.2.4"
