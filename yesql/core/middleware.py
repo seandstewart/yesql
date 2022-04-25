@@ -1,4 +1,7 @@
-from typing_extensions import TypeGuard
+try:
+    from typing_extensions import TypeGuard
+except ImportError:
+    from typing import TypeGuard
 
 from . import types
 
