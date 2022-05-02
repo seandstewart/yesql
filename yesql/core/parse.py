@@ -147,14 +147,7 @@ def _iter_comments(statement: sqlparse.sql.Statement):
         # If we do, extract it and yield from that.
         if ismultiline:
             yield from (
-                (ix, cs)
-                for c in (
-                    token.value.removeprefix("/**")
-                    .removesuffix("**/")
-                    .strip()
-                    .splitlines()
-                )
-                if (cs := c.strip())
+                (ix, cs) for c in _split_comments(token.value) if (cs := c.strip())
             )
         # Otherwise, yield from the token group of single-line comments.
         else:
@@ -252,10 +245,16 @@ if sys.version_info >= (3, 9):
     def _clean_comment(comment: str) -> str:
         return comment.strip().removeprefix(_PRE).strip()
 
+    def _split_comments(comment: str) -> list[str]:
+        return comment.removeprefix("/**").removesuffix("**/").strip().splitlines()
+
 else:
 
     def _clean_comment(comment: str) -> str:
         return comment.strip().strip(_PRE).strip()
+
+    def _split_comments(comment: str) -> list[str]:
+        return comment.strip("/**").rstrip("**/").strip().splitlines()
 
 
 _PRE = "--"
