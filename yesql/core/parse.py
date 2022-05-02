@@ -6,6 +6,7 @@ import functools
 import inspect
 import pathlib
 import re
+import sys
 import warnings
 from typing import TYPE_CHECKING, Deque, Final, Literal, Optional, Tuple, cast
 
@@ -246,8 +247,16 @@ def _normalize_parameters(
     return sql, remapping
 
 
-def _clean_comment(comment: str) -> str:
-    return comment.strip().removeprefix(_PRE).strip()
+if sys.version_info >= (3, 9):
+
+    def _clean_comment(comment: str) -> str:
+        return comment.strip().removeprefix(_PRE).strip()
+
+
+else:
+
+    def _clean_comment(comment: str) -> str:
+        return comment.strip().strip(_PRE).strip()
 
 
 _PRE = "--"
