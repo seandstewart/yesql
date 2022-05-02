@@ -44,6 +44,7 @@ def service(
     *,
     tablename: str = None,
     dialect: drivers.SupportedDialectsT = "postgresql",
+    isaio: bool = True,
     exclude_fields: frozenset[str] = frozenset(),
     scalar_queries: frozenset[str] = frozenset(),
     executor: drivers.BaseQueryExecutor = None,
@@ -61,6 +62,8 @@ def service(
             The name of the table for this query service.
         dialect: defaults "postgresql"
             The SQL Dialect of your database.
+        isaio: defaults True
+            Whether to use asyncio-based execution or syncio-based.
         exclude_fields: optional
             Any fields which should be automatically excluded when dumping your model.
         scalar_queries: optional
@@ -80,6 +83,7 @@ def service(
         querylib=querylib,
         tablename=tablename,
         dialect=dialect,
+        isaio=isaio,
         exclude_fields=exclude_fields,
         scalar_queries=scalar_queries,
         base_service=base_service,  # type: ignore
