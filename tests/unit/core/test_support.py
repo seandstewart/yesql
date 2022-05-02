@@ -15,12 +15,12 @@ class Foo:
     bar: int
 
 
-class TestableError(Exception):
+class DummyError(Exception):
     ...
 
 
-class TestableExecutor:
-    TRANSIENT = (TestableError,)
+class DummyExecutor:
+    TRANSIENT = (DummyError,)
 
 
 class Params(NamedTuple):
@@ -51,7 +51,7 @@ class TestRetry:
     )
     async def test_retry_passthru(func):
         # Given
-        self = TestableExecutor()
+        self = DummyExecutor()
         # When
         wrapped = yesql.support.retry(func)
         result = wrapped(self)
@@ -64,15 +64,15 @@ class TestRetry:
     @pytest.mark.parametrize(
         argnames="func",
         argvalues=[
-            Params(False, side_effect=[TestableError, TestableError, {"bar": 1}]),
-            Params(True, side_effect=[TestableError, TestableError, {"bar": 1}]),
+            Params(False, side_effect=[DummyError, DummyError, {"bar": 1}]),
+            Params(True, side_effect=[DummyError, DummyError, {"bar": 1}]),
         ],
         indirect=True,
         ids=["sync", "async"],
     )
     async def test_retry_succeeds(func):
         # Given
-        self = TestableExecutor()
+        self = DummyExecutor()
         # When
         wrapped = yesql.support.retry(func)
         result = wrapped(self)
@@ -85,19 +85,19 @@ class TestRetry:
     @pytest.mark.parametrize(
         argnames="func",
         argvalues=[
-            Params(False, side_effect=TestableError),
-            Params(True, side_effect=TestableError),
+            Params(False, side_effect=DummyError),
+            Params(True, side_effect=DummyError),
         ],
         indirect=True,
         ids=["sync", "async"],
     )
     async def test_retry_reraise(func):
         # Given
-        self = TestableExecutor()
+        self = DummyExecutor()
         # When
         wrapped = yesql.support.retry(func, retries=1)
         # Then
-        with pytest.raises(TestableError):
+        with pytest.raises(DummyError):
             result = wrapped(self)
             if inspect.isawaitable(result):
                 await result
@@ -122,16 +122,16 @@ class TestRetryCursor:
         argnames="func",
         argvalues=[
             Params(True, return_value=True),
-            Params(True, side_effect=[TestableError, TestableError, True]),
+            Params(True, side_effect=[DummyError, DummyError, True]),
             Params(False, return_value=True),
-            Params(False, side_effect=[TestableError, TestableError, True]),
+            Params(False, side_effect=[DummyError, DummyError, True]),
         ],
         indirect=True,
         ids=["async-success", "async-errors", "sync-success", "sync-errors"],
     )
     async def test_retry_cursor(self, func):
         # Given
-        svc = TestableExecutor()
+        svc = DummyExecutor()
         # When
         wrapped = yesql.support.retry_cursor(func)
         result = await self._exhaust_mock(wrapped, svc)
@@ -141,17 +141,17 @@ class TestRetryCursor:
     @pytest.mark.parametrize(
         argnames="func",
         argvalues=[
-            Params(True, side_effect=TestableError),
-            Params(False, side_effect=TestableError),
+            Params(True, side_effect=DummyError),
+            Params(False, side_effect=DummyError),
         ],
         indirect=True,
     )
     async def test_retry_cursor_reraise(self, func):
         # Given
-        svc = TestableExecutor()
+        svc = DummyExecutor()
         # When
         wrapped = yesql.support.retry_cursor(func, retries=2)
-        with pytest.raises(TestableError):
+        with pytest.raises(DummyError):
             await self._exhaust_mock(wrapped, svc)
 
     @staticmethod

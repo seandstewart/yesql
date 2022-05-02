@@ -4,8 +4,9 @@ import dataclasses
 import inspect
 
 import pytest
+
 import yesql
-from yesql.core.drivers import base, SupportedDriversT
+from yesql.core.drivers import SupportedDriversT, base
 
 
 class TestSyncExecutor:

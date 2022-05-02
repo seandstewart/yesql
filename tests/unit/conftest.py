@@ -2,6 +2,8 @@ from unittest import mock
 
 import pytest
 
+from yesql.core import drivers
+
 
 @pytest.fixture(scope="package", autouse=True)
 def MockAsyncPGConnection():
@@ -66,3 +68,8 @@ def MockSQLiteConnection():
         with mock.patch("sqlite3.connect", autospec=True) as mmconn:
             mmconn.return_value = inst
             yield mconn
+
+
+@pytest.fixture
+def executor():
+    yield mock.MagicMock(spec=drivers.base.BaseQueryExecutor, instance=True)

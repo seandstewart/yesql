@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import functools
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -10,6 +11,7 @@ from typing import (
     Sequence,
     TypeVar,
     Union,
+    cast,
 )
 
 import typic
@@ -85,6 +87,9 @@ class Statement(Generic[_T]):
         "_middleware",
         "__call__",
     )
+    query: parse.QueryDatum
+    executor: base.BaseQueryExecutor
+    serdes: SerDes[_T]
 
     def __init__(
         self,
@@ -97,7 +102,7 @@ class Statement(Generic[_T]):
         self.query = query
         self.name = query.modifier
         self.executor = executor
-        self.serdes = serdes
+        self.serdes = serdes or cast("SerDes[_T]", generic_serdes())
         self._middleware = middleware
         self.__call__ = self.execute_middleware if middleware else self.execute
 
@@ -105,11 +110,13 @@ class Statement(Generic[_T]):
         return (
             f"<{self.__class__.__name__} "
             f"query={self.query.name!r}, "
-            f"modifier={self.name!r}>"
+            f"modifier={self.name!r}, "
+            f"middleware={self._middleware and self._middleware.__name__!r}"
+            f">"
         )
 
     @property
-    def middleware(self):
+    def middleware(self) -> types.MiddlewareMethodProtocolT:
         return self._middleware
 
     @middleware.setter
@@ -167,13 +174,18 @@ class Statement(Generic[_T]):
         args: Sequence,
         kwargs: dict,
     ) -> tuple[Sequence, dict]:
-        if instance is not None:
-            serializer = serializer or self.serdes.serializer
-            serialized = serializer(instance)
-            if isinstance(serialized, Mapping):
-                kwargs.update(serialized)
-            else:
-                args = [*args, *serialized]
+        if instance is None:
+            return args, kwargs
+
+        serializer = serializer or self.serdes.serializer
+        serialized = serializer(instance)
+        if isinstance(serialized, Mapping):
+            kwargs.update(serialized)
+        else:
+            args = (
+                *args,
+                *serialized,
+            )
 
         return args, kwargs
 
@@ -478,6 +490,22 @@ class SerDes(Generic[_T]):
     serializer: base.SerializerT[_T]
     deserializer: base.DeserializerT[_T | None]
     bulk_deserializer: base.DeserializerT[Iterable[_T]]
+
+
+@functools.lru_cache(maxsize=1)
+def generic_serdes() -> SerDes[dict]:
+    serdes = SerDes(
+        serializer=cast("base.SerializerT[dict]", typic.primitive),
+        deserializer=cast(
+            "base.DeserializerT[dict | None]",
+            typic.protocol(dict, is_optional=True).transmute,
+        ),
+        bulk_deserializer=cast(
+            "base.DeserializerT[Iterable[dict]]",
+            typic.protocol(Iterable[dict]).transmute,  # type: ignore[misc]
+        ),
+    )
+    return serdes
 
 
 StatementsT = Union[
