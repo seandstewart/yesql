@@ -252,7 +252,6 @@ if sys.version_info >= (3, 9):
     def _clean_comment(comment: str) -> str:
         return comment.strip().removeprefix(_PRE).strip()
 
-
 else:
 
     def _clean_comment(comment: str) -> str:
