@@ -1,6 +1,6 @@
 site_name: yesql
 site_author: Sean D Stewart
-copyright: "Copyright &copy; 2021 Sean Stewart"
+copyright: "Copyright &copy; 2021-2023 Sean Stewart"
 site_url: https://python-yesql.org
 repo_url: https://github.com/seandstewart/yesql
 repo_name: seandstewart/yesql

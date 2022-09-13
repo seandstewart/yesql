@@ -6,7 +6,7 @@ from unittest import mock
 
 import pytest
 
-from yesql import uow
+from yesql import statement
 from yesql.core import parse, types
 from yesql.core.drivers import base
 
@@ -17,7 +17,7 @@ class DummyModel:
     id: int = None
 
 
-class DummyStatement(uow.Statement[DummyModel]):
+class DummyStatement(statement.Statement[DummyModel]):
     def execute(
         self,
         *args,
@@ -131,9 +131,9 @@ class TestCoreStatement:
         assert params == expected_params
 
 
-def test_uow_execute(uow_case):
+def test_statement_execute(statement_case):
     # Given
-    unit, kwargs, exec_method, expected_call = uow_case
+    unit, kwargs, exec_method, expected_call = statement_case
     # When
     unit.execute(**kwargs)
     # Then
@@ -168,7 +168,7 @@ def test_uow_execute(uow_case):
         "multi-no-coerce",
     ]
 )
-def uow_case(request, executor, datum):
+def statement_case(request, executor, datum):
     mod, case = request.param.split("-", maxsplit=1)
     # if mod == "many":
     unit_cls = _MOD_TO_UOW_CLS[mod]
@@ -178,9 +178,9 @@ def uow_case(request, executor, datum):
     )
     exec_method = getattr(executor, mod)
     deser = unit.serdes.deserializer if mod == "one" else unit.serdes.bulk_deserializer
-    # Multi- uow have a slightly different signature.
+    # Multi- statement have a slightly different signature.
     if mod.startswith("multi"):
-        kwargs, call = _uow_multi_case(case, unit, datum)
+        kwargs, call = _statement_multi_case(case, unit, datum)
 
     elif case == "instance":
         instance = DummyModel("value", 1)
@@ -239,7 +239,9 @@ def uow_case(request, executor, datum):
     return unit, kwargs, exec_method, call
 
 
-def _uow_multi_case(case: str, unit: uow.Statement, datum: parse.QueryDatum):
+def _statement_multi_case(
+    case: str, unit: statement.Statement, datum: parse.QueryDatum
+):
     if case == "instance":
         instance = DummyModel("value", 1)
         kwargs = {"instances": [instance]}
@@ -300,13 +302,13 @@ def _uow_multi_case(case: str, unit: uow.Statement, datum: parse.QueryDatum):
 
 
 _MOD_TO_UOW_CLS = {
-    "many": uow.Many,
-    "many_cursor": uow.ManyCursor,
-    "raw": uow.Raw,
-    "raw_cursor": uow.RawCursor,
-    "one": uow.One,
-    "scalar": uow.Scalar,
-    "multi": uow.Multi,
-    "multi_cursor": uow.MultiCursor,
-    "affected": uow.Affected,
+    "many": statement.Many,
+    "many_cursor": statement.ManyCursor,
+    "raw": statement.Raw,
+    "raw_cursor": statement.RawCursor,
+    "one": statement.One,
+    "scalar": statement.Scalar,
+    "multi": statement.Multi,
+    "multi_cursor": statement.MultiCursor,
+    "affected": statement.Affected,
 }

@@ -12,7 +12,8 @@ def middleware(*names: str):
     """Flag to the service that this method is a 'middleware' for the target query.
 
     A 'middleware' method allows for pre- and post-processing of for the assigned query
-    methods.
+    methods. Doing so matkes the flagged callable behave more like a staticmethod than
+    a bound method.
 
     Notes:
         Middlewares should always be a coroutine function.

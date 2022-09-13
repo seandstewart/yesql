@@ -64,10 +64,10 @@ Sentinel = SentinelType()
 
 
 class Statement(Generic[_T]):
-    """A single Unit of Work for executing a query and interpreting the result.
+    """A callable representing a single execution context for the associated query.
 
     A Statement represents a parsed SQL query, the execution of that query, and the
-    methodology for deserializing a response.
+    methodology for serializing parameters and deserializing a response.
 
     Statement instances are directly callable. The callable signature is determined
     by the :py::meth:`~yesql.uow.Statement.execute` method for each subclass.
@@ -77,6 +77,7 @@ class Statement(Generic[_T]):
         name: The modifier name for this unit of work.
         executor: :py::class:`~yesql.core.drivers.base.BaseQueryExecutor`.
         serdes: :py::class:`~yesql.uow.SerDes`.
+        middleware: A callable which will be passed the executable, query, and parameters
     """
 
     __slots__ = (
@@ -140,6 +141,7 @@ class Statement(Generic[_T]):
         serializer: base.SerializerT | None = None,
         **kwargs,
     ):
+        """Execute the associated :py::class:`~yesql.core.parse.QueryDatum`."""
         raise NotImplementedError()
 
     def execute_middleware(
@@ -152,6 +154,11 @@ class Statement(Generic[_T]):
         deserializer: base.DeserializerT | None = None,
         **kwargs,
     ):
+        """Execute the associated middleware.
+
+        This will pass the :py::class:`~yesql.uow.Statement` instance to the middleware
+        alongside the parameters provided at call-time.
+        """
         deserializer = deserializer or self.serdes.bulk_deserializer
         if deserializer:
             kwargs["deserializer"] = deserializer
@@ -259,6 +266,8 @@ class Many(Statement[_T]):
 
 
 class ManyCursor(StatementCursor):
+    """Execute a query, returning all results as a cursor."""
+
     def execute(
         self,
         *args,
@@ -285,6 +294,8 @@ class ManyCursor(StatementCursor):
 
 
 class Raw(Statement):
+    """Execute a query, returning all results as a list, without deserialization."""
+
     def execute(
         self,
         *args,
@@ -311,6 +322,8 @@ class Raw(Statement):
 
 
 class RawCursor(StatementCursor):
+    """Execute a query, returning all results as a cursor."""
+
     def execute(
         self,
         *args,
@@ -367,6 +380,8 @@ class One(Statement):
 
 
 class Scalar(Statement):
+    """Execute a query, returning a single value from the first result."""
+
     def execute(
         self,
         *args,
@@ -393,6 +408,8 @@ class Scalar(Statement):
 
 
 class Multi(Statement):
+    """Execute a query with multiple sets of parameters, returning all results."""
+
     def execute(  # type: ignore[override]
         self,
         *,
@@ -424,6 +441,8 @@ class Multi(Statement):
 
 
 class MultiCursor(StatementCursor):
+    """Execute a query with multiple sets of parameters, returning a cursor."""
+
     def execute(  # type: ignore[override]
         self,
         *,

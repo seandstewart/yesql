@@ -10,7 +10,7 @@ import typic
 from .core import drivers, parse, support, types
 from .core.middleware import *
 from .repository import *
-from .uow import *
+from .statement import *
 
 __all__ = (
     "Affected",
@@ -120,7 +120,7 @@ def servicemaker(
         dialect: defaults "postgresql"
             The SQL dialect for connecting to your database.
         isaio: defaults True
-            Whether to use asyncio-based execution or syncio-based.
+            Whether to use asyncio-based execution or sync-io-based.
         exclude_fields: optional
             Any fields which should be automatically excluded when dumping your model.
         scalar_queries: optional

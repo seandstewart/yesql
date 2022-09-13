@@ -6,7 +6,54 @@ does all the rest.
 
 ## Quickstart
 
-TODO
+
+### Installation
+
+```shell
+pip install -U yesql
+```
+
+### Basic Usage
+
+```python
+import dataclasses
+import datetime
+import pathlib
+from typing import Optional, Set
+
+import typic
+import yesql
+
+
+QUERIES = pathlib.Path(__file__).resolve().parent / "queries"
+
+
+@typic.slotted(dict=False, weakref=True)
+@dataclasses.dataclass
+class Post:
+    id: Optional[int] = None
+    slug: Optional[str] = None
+    title: Optional[str] = None
+    subtitle: Optional[str] = None
+    tagline: Optional[str] = None
+    body: Optional[str] = None
+    tags: Set[str] = dataclasses.field(default_factory=set)
+    publication_date: Optional[datetime.date] = None
+    created_at: Optional[datetime.datetime] = None
+    updated_at: Optional[datetime.datetime] = None
+
+
+
+class AsyncPosts(yesql.AsyncQueryRepository[Post]):
+    """An asyncio-native service for querying blog posts."""
+
+    class metadata(yesql.QueryMetadata):
+        __querylib__ = QUERIES
+        __tablename__ = "posts"
+        __exclude_fields__ = frozenset(("slug",))
+
+
+```
 
 ## No ORMs?
 
@@ -49,6 +96,9 @@ YeSQL takes a SQL-first approach to data management:
 3. *Plain Ol' Data Objects.*
    - Model your data with a mapping, a namedtuple, a dataclass, or just use the native
      record objects of your preferred library.
+   - Loose ser/des based on your model, which can be overridden at any point.
+   - No implicit state mapping of data from a table to your model. Your query powers 
+     your model.
 
 ## v1.0.0 Roadmap
 
@@ -58,11 +108,11 @@ YeSQL takes a SQL-first approach to data management:
 - [ ] Full Documentation Coverage
 - [ ] Full Test Coverage
 - [ ] Dialect Support
-  - [x] Async PostgreSQL (via asyncpg)
-  - [x] Async SQLite (via aiosqlite)
+  - [x] Async PostgreSQL (via asyncpg & psycopg3)
+  - [ ] Async SQLite (via aiosqlite)
   - [ ] Async MySQL
   - [x] Sync PostgreSQL
-  - [x] Sync SQLite
+  - [ ] Sync SQLite
   - [ ] Sync MySQL
 
 ## License

@@ -25,7 +25,7 @@ from typing import (
 import inflection
 import typic
 
-from yesql import uow
+from yesql import statement
 from yesql.core import drivers, middleware, parse, types
 
 __all__ = (
@@ -47,6 +47,12 @@ _RT = TypeVar("_RT")
 
 
 class QueryMetadata(types.MetadataT):
+    """Default metadata for the query repository.
+
+    Query Metadata provides simple configuration for binding an execution Statement,
+    a parsed QueryDatum, and a repository's data model.
+    """
+
     __slots__ = ()
     __dialect__: ClassVar[drivers.SupportedDialectsT] = "postgresql"
     __exclude_fields__: ClassVar[FrozenSet[str]] = frozenset(
@@ -56,12 +62,12 @@ class QueryMetadata(types.MetadataT):
 
 
 class BaseQueryRepository(types.RepositoryProtocolT[_MT]):
-    """The base class for a 'service'.
+    """The base class for a 'repository'.
 
-    A 'service' is responsible for querying a specific table.
+    A 'repository' is responsible for querying a specific table.
     It also is semi-aware of in-memory dataclass representing the table data.
 
-    By default, a service will coerce the query result to the bound model.
+    By default, a repository will coerce the query result to the bound model.
     """
 
     # User-defined class attributes
@@ -72,20 +78,20 @@ class BaseQueryRepository(types.RepositoryProtocolT[_MT]):
     driver: ClassVar[drivers.Driver]
     # Generated or Initialized Attributes
     executor: drivers.BaseQueryExecutor
-    serdes: uow.SerDes[_MT]
+    serdes: statement.SerDes[_MT]
     # Private attributes.
     _protocol: ClassVar[typic.SerdeProtocol[_MT | None]]
     _bulk_protocol: ClassVar[typic.SerdeProtocol[Iterable[_MT]]]
 
     __slots__ = ()
 
-    __statements__: dict[str, uow.Statement[_MT]]
+    __statements__: dict[str, statement.Statement[_MT]]
 
     def __init__(
         self,
         *,
         executor: drivers.BaseQueryExecutor = None,
-        serdes: uow.SerDes[_MT] = None,
+        serdes: statement.SerDes[_MT] = None,
         **connect_kwargs,
     ):
         # If we're overriding the default connector, then propagate it.
@@ -103,9 +109,11 @@ class BaseQueryRepository(types.RepositoryProtocolT[_MT]):
         self.executor.pool_kwargs.update(connect_kwargs)
 
     def initialize(self):
+        """Initialize the query executor's connection to the underlying database."""
         return self.executor.initialize()
 
     def teardown(self, *, timeout: int = 10):
+        """Tear down the query executor's connection to the underlying database."""
         return self.executor.teardown(timeout=timeout)
 
     def __init_subclass__(cls, **kwargs):
@@ -122,7 +130,7 @@ class BaseQueryRepository(types.RepositoryProtocolT[_MT]):
 
         cls._protocol = typic.protocol(cls.model, is_optional=True)
         cls._bulk_protocol = typic.protocol(Iterable[cls.model])
-        cls.serdes = uow.SerDes(
+        cls.serdes = statement.SerDes(
             serializer=cls.get_kvs,
             deserializer=cls._protocol.transmute,
             bulk_deserializer=cls._bulk_protocol.transmute,
@@ -179,7 +187,7 @@ class BaseQueryRepository(types.RepositoryProtocolT[_MT]):
         return lib
 
     @classmethod
-    def _resolve_statements(cls) -> dict[str, uow.Statement]:
+    def _resolve_statements(cls) -> dict[str, statement.Statement]:
         """Bootstrap all raw Query functions and attach them to this service.
 
         Overload this method to customize how your queries are bootstrapped.
@@ -190,11 +198,11 @@ class BaseQueryRepository(types.RepositoryProtocolT[_MT]):
             for qname in mware.__intercepts__
         }
         available = cls._bootstrap_package(cls.queries, mwares)
-        for name, statement in available.items():
+        for name, stmt in available.items():
             # Don't override a custom impl, but let them use it if they want.
             if hasattr(cls, name):
                 name = name + "_default"
-            setattr(cls, name, statement)
+            setattr(cls, name, stmt)
         stack: _QueryPackageStack = collections.deque(
             (cls, pkg) for pkg in cls.queries.packages.values()
         )
@@ -214,19 +222,26 @@ class BaseQueryRepository(types.RepositoryProtocolT[_MT]):
         cls,
         package: parse.QueryPackage,
         middlewares: dict[str, types.MiddlewareMethodProtocolT],
-    ) -> dict[str, uow.Statement]:
+    ) -> dict[str, statement.Statement]:
         available = {}
+        # For every module in the package...
         for mname, module in package.modules.items():
+            # For every query in the module...
             for name, datum in module.queries.items():
-                statements = uow.statements(
+                # Get the unit-of-work statements for this query
+                statements = statement.statements(
                     datum,
                     executor=cls.executor,
                     serdes=cls.serdes,
                 )
+                # For every statement...
                 for stat in statements:
+                    # Check if there is an associated middleware
                     mware = middlewares.get(stat.query.name)
                     if mware:
                         stat.middleware = mware
+                    # Add the statement to the mapping of available units of work
+                    #   for this package.
                     available[stat.query.name] = stat
         return available
 
@@ -237,8 +252,9 @@ class BaseQueryRepository(types.RepositoryProtocolT[_MT]):
 
     def count(
         self,
-        query: Union[str, uow.Statement],
+        query: Union[str, statement.Statement],
         *args,
+        estimate_ok: bool = True,
         **kwargs,
     ):
         """Get the number of rows returned by this query.
@@ -256,7 +272,7 @@ class BaseQueryRepository(types.RepositoryProtocolT[_MT]):
             The number of rows.
         """
         if isinstance(query, str):
-            query = cast(uow.Statement, getattr(self, query))
+            query = cast(statement.Statement, getattr(self, query))
         datum = query.query
         sql = f"SELECT count(*) FROM ({query.query.sql.rstrip(';')}) AS q;"
         stat = dataclasses.replace(datum, sql=sql)
@@ -264,7 +280,7 @@ class BaseQueryRepository(types.RepositoryProtocolT[_MT]):
 
     def explain(
         self,
-        query: Union[str, uow.Statement],
+        query: Union[str, statement.Statement],
         *args,
         analyze: bool = True,
         format: Optional[ExplainFormatT] = "json",
@@ -304,7 +320,7 @@ class BaseQueryRepository(types.RepositoryProtocolT[_MT]):
             The raw results of the EXPLAIN query.
         """
         if isinstance(query, str):
-            query = cast(uow.Statement, getattr(self, query))
+            query = cast(statement.Statement, getattr(self, query))
         datum = query.query
         op = self.executor.get_explain_command(analyze, format)
         sql = f"{op}{datum.sql}"
@@ -326,7 +342,7 @@ class BaseQueryRepository(types.RepositoryProtocolT[_MT]):
 
 
 class AsyncQueryRepository(BaseQueryRepository[_MT]):
-    """An event-loop compatible query service (async/await)."""
+    """An event-loop compatible query repository (async/await)."""
 
     isaio = True
 
@@ -340,7 +356,7 @@ class AsyncQueryRepository(BaseQueryRepository[_MT]):
 
 
 class SyncQueryRepository(BaseQueryRepository[_MT]):
-    """A blocking-IO query service."""
+    """A blocking-IO query repository."""
 
     isaio = False
 

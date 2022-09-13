@@ -51,7 +51,7 @@ def parse(
             modname = modname or "<locals>"
         module = parse_module(queries=queries, modname=modname, driver=driver)
         return QueryPackage(name=modname, path=path, modules={module.name: module})
-    # Otherwise, traverse the package with DFS, building the query tree.
+    # Otherwise, traverse the package with BFS, building the query tree.
     # Create the root package.
     package = QueryPackage(name=modname or queries.stem, modules={}, path=queries)
     stack: Deque[QueryPackage] = collections.deque([package])
@@ -190,7 +190,7 @@ def process_sql(
         kwdargs.update(kwd)
 
     sig = inspect.Signature([*posargs.values(), *kwdargs.values()])
-    sql, remapping = _normalize_parameters(statement, driver, posargs, kwdargs)
+    sql, remapping = _normalize_parameters(str(statement), driver, posargs, kwdargs)
     return sql, sig, remapping
 
 
@@ -217,12 +217,12 @@ def _gather_parameters(
 
 
 def _normalize_parameters(
-    statement: sqlparse.sql.Statement,
+    statement: str,
     driver: SupportedDriversT,
     posargs: dict[str, inspect.Parameter],
     kwdargs: dict[str, inspect.Parameter],
 ) -> tuple[str, dict[str, int] | None]:
-    sql, remapping = str(statement), None
+    sql, remapping = statement, None
     if not kwdargs:
         return sql, remapping
 
@@ -246,7 +246,14 @@ if sys.version_info >= (3, 9):
         return comment.strip().removeprefix(_PRE).strip()
 
     def _split_comments(comment: str) -> list[str]:
-        return comment.removeprefix("/**").removesuffix("**/").strip().splitlines()
+        return [
+            c.strip()
+            for c in comment.strip()
+            .removeprefix("/**")
+            .removesuffix("**/")
+            .strip()
+            .splitlines()
+        ]
 
 else:
 
@@ -254,7 +261,10 @@ else:
         return comment.strip().strip(_PRE).strip()
 
     def _split_comments(comment: str) -> list[str]:
-        return comment.strip("/**").rstrip("**/").strip().splitlines()
+        return [
+            c.strip()
+            for c in comment.strip().strip("/**").rstrip("**/").strip().splitlines()
+        ]
 
 
 _PRE = "--"

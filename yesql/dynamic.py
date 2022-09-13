@@ -23,7 +23,7 @@ class DynamicQueryService(Generic[_MT]):
     """Query Library for building ad-hoc queries in-memory.
 
     This service acts as glue between the `pypika` query-builder library and Norma's
-    `QueryService`.
+    `QueryRepository`.
 
     It is intended as an escape-hatch for the small subset of situations where
     dynamically-built queries are actually needed (think an admin tool, like
@@ -58,7 +58,7 @@ class DynamicQueryService(Generic[_MT]):
         transaction: bool = True,
         rollback: bool = False,
         coerce: bool = True,
-        deseerializer: drivers.base.DeserializerT | None = None,
+        deserializer: drivers.base.DeserializerT | None = None,
         modifier: parse.ModifierT = parse.MANY,
         **kwargs,
     ) -> Union[_ReturnT, Awaitable[_ReturnT]]:
@@ -81,6 +81,9 @@ class DynamicQueryService(Generic[_MT]):
             coerce: defaults True
                 Whether to coerce the query result into the model bound to the service.
                 Will only be applied if the execution modifier returns a full row object.
+            deserializer: optional
+                A custom deserializer for the query result. If none provided, this method
+                will make use of the default deserializer on the associated repository.
             modifier: The execution modifier for this query.
                 Fetch all rows, one row, the first value in the first row,
                 or just the affected rows.
@@ -92,7 +95,7 @@ class DynamicQueryService(Generic[_MT]):
         query = self._resolve_query(sql=query, modifier=modifier)
         executor = getattr(self.service.executor, modifier)
         if modifier in {parse.MANY, parse.ONE, parse.MULTI} and coerce:
-            deserializer = deseerializer or (
+            deserializer = deserializer or (
                 self.service.serdes.deserializer
                 if modifier == parse.ONE
                 else self.service.serdes.bulk_deserializer
@@ -161,6 +164,7 @@ class DynamicQueryService(Generic[_MT]):
         transaction: bool = True,
         rollback: bool = False,
         coerce: bool = True,
+        deserializer: drivers.base.DeserializerT | None = None,
         modifier: parse.ModifierT = parse.MANY,
         **where: Any,
     ) -> Union[_ReturnT, Awaitable[_ReturnT]]:
@@ -186,6 +190,9 @@ class DynamicQueryService(Generic[_MT]):
             coerce: defaults True
                 Whether to coerce the query result into the model bound to the service.
                 Will only be applied if the execution modifier returns a full row object.
+            deserializer: optional
+                A custom deserializer for the query result. If none provided, this method
+                will make use of the default deserializer on the associated repository.
             modifier: The execution modifier for this query.
                 Fetch all rows, one row, the first value in the first row,
                 or just the affected rows.
@@ -200,6 +207,7 @@ class DynamicQueryService(Generic[_MT]):
             transaction=transaction,
             rollback=rollback,
             coerce=coerce,
+            deserializer=deserializer,
             modifier=modifier,
         )
 
@@ -258,12 +266,10 @@ class DynamicQueryService(Generic[_MT]):
                 Optionally specify direct equality comparisons for the WHERE clause.
         """
         fs: Iterable[str] = fields or [self.builder.star]
-        query: pypika.queries.QueryBuilder = self.builder.select(*fs).where(
-            pypika.Criterion.all(
-                [getattr(self.table, c) == v for c, v in where.items()]
-            )
+        criterion: pypika.Criterion = pypika.Criterion.all(
+            [getattr(self.table, c) == v for c, v in where.items()]
         )
-        return query
+        return self.builder.select(*fs).where(criterion)
 
     @staticmethod
     def _get_table(name: str, *, schema: str = None) -> pypika.Table:
