@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "yesql"
-version = "0.1.0"
+version = "0.1.1"
 description = "YeSQL is a SQL-first data manipulation library that will replace your ORM."
 authors = ["Sean Stewart <sean_stewart@me.com>"]
 license = "MIT"

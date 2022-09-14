@@ -232,12 +232,16 @@ def _normalize_parameters(
         if posargs:
             start = [int(a.name.replace("arg", "")) for a in posargs.values()][-1] + 1
         for i, (name, param) in enumerate(kwdargs.items(), start=start):
-            sql = re.sub(name, f"${i}", sql)
+            sql = _replace(name=name, replacement=f"${i}", sql=sql)
             remapping[param.name] = i
     elif driver == "psycopg":
         for name, param in kwdargs.items():
-            sql = re.sub(name, f"%({param.name})s", sql)
+            sql = _replace(name=name, replacement=f"%({param.name})s", sql=sql)
     return sql, remapping
+
+
+def _replace(*, name: str, replacement: str, sql: str) -> str:
+    return re.sub(r"(?<!:)" + name, replacement, sql)
 
 
 if sys.version_info >= (3, 9):

@@ -17,7 +17,7 @@ from typing import (
 )
 
 if TYPE_CHECKING:
-    from yesql import uow
+    from yesql import statement
     from yesql.core import drivers, parse
 
 
@@ -42,14 +42,14 @@ class RepositoryProtocolT(Generic[ModelT]):
     queries: ClassVar[parse.QueryPackage]
     driver: ClassVar[drivers.Driver]
     # Initialized Attributes
-    serdes: uow.SerDes[ModelT]
+    serdes: statement.SerDes[ModelT]
     executor: drivers.BaseQueryExecutor
     isaio: bool
 
     TRANSIENT: tuple[type[BaseException], ...]
 
-    def __getattr__(self, item: str) -> uow.StatementsT:
-        ...
+    def __getattr__(self, item: str) -> statement.StatementsT:
+        raise AttributeError(item)
 
     def count(self, query, *args, connection: Optional[ConnectionT] = None, **kwargs):
         ...
@@ -83,7 +83,7 @@ class MiddlewareMethodProtocolT(Protocol[_ReturnT]):
 
     def __call__(
         self,
-        statement: uow.Statement,
+        statement: statement.Statement,
         *args,
         connection: ConnectionT | None = None,
         timeout: float = 10,
@@ -100,7 +100,7 @@ class QueryExecutorMethodT(Protocol[_ReturnT]):
 
     def __call__(
         self,
-        query: uow.Statement,
+        query: statement.Statement,
         *args,
         connection: ConnectionT | None = None,
         timeout: float = 10,

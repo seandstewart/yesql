@@ -32,7 +32,7 @@ def test_split_comments():
 
 def test_normalize_parameters_asyncpg():
     # Given
-    statement = "select * from foo where blar=$1, bar=:bar"
+    statement = "select * from foo where blar=$1, bar=:bar::bar"
     posarg = inspect.Parameter(
         "arg1",
         kind=inspect.Parameter.POSITIONAL_ONLY,
@@ -43,7 +43,7 @@ def test_normalize_parameters_asyncpg():
     )
     posargs = {"$1": posarg}
     kwdargs = {":bar": kwdarg}
-    expected_sql = "select * from foo where blar=$1, bar=$2"
+    expected_sql = "select * from foo where blar=$1, bar=$2::bar"
     expected_remapping = {kwdarg.name: 2}
     # When
     sql, remapping = parse._normalize_parameters(
@@ -58,7 +58,7 @@ def test_normalize_parameters_asyncpg():
 
 def test_normalize_parameters_psycopg():
     # Given
-    statement = "select * from foo where blar=:blar, bar=:bar"
+    statement = "select * from foo where blar=:blar, bar=:bar::bar"
     kwdargs = {
         ":bar": inspect.Parameter(
             "bar",
@@ -70,7 +70,7 @@ def test_normalize_parameters_psycopg():
         ),
     }
 
-    expected_sql = "select * from foo where blar=%(blar)s, bar=%(bar)s"
+    expected_sql = "select * from foo where blar=%(blar)s, bar=%(bar)s::bar"
     expected_remapping = None
     # When
     sql, remapping = parse._normalize_parameters(

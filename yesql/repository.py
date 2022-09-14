@@ -141,10 +141,6 @@ class BaseQueryRepository(types.RepositoryProtocolT[_MT]):
         cls.__statements__ = cls._resolve_statements()
         return super().__init_subclass__(**kwargs)
 
-    def __class_getitem__(cls, item):
-        cls.model = item
-        return super().__class_getitem__(item)
-
     @classmethod
     def get_kvs(cls, model: types.ModelT) -> Dict[str, Any]:
         """Get a mapping of key-value pairs for your model without excluded fields."""
