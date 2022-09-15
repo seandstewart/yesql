@@ -1,6 +1,7 @@
 import inspect
 from unittest import mock
 
+import pytest
 import sqlparse.tokens
 
 from yesql.core import parse
@@ -124,6 +125,62 @@ def test_gather_parameters():
     posargs, kwdargs = parse._gather_parameters(token)
     # Then
     assert (posargs, kwdargs) == (expected_posargs, expected_kwdargs)
+
+
+def test_process_sql():
+    # Given
+    given_sql = "select * from foo where blar=$1, bar=:bar::bar"
+    ttype = sqlparse.tokens.Name.Placeholder
+    given_sub_tokens = [
+        _mock_token(ttype=ttype, value="$1"),
+        _mock_token(ttype=ttype, value=":bar"),
+    ]
+    given_token = _mock_token(
+        __str__=lambda _: given_sql,
+        tokens=[_mock_token(flatten=lambda: given_sub_tokens)],
+    )
+    expected_sig = inspect.Signature(
+        [
+            inspect.Parameter("arg1", kind=inspect.Parameter.POSITIONAL_ONLY),
+            inspect.Parameter("bar", kind=inspect.Parameter.KEYWORD_ONLY),
+        ]
+    )
+    expected_sql = "select * from foo where blar=$1, bar=$2::bar"
+    expected_remapping = {"bar": 2}
+    # When
+    sql, sig, remapping = parse.process_sql(
+        statement=given_token,
+        start=0,
+        driver="asyncpg",
+    )
+    # Then
+    assert (sql, sig, remapping) == (expected_sql, expected_sig, expected_remapping)
+
+
+@pytest.mark.parametrize(
+    argnames="lead,expected_name,expected_modifier",
+    argvalues=[
+        ("foo", None, parse.MANY),
+        (":name foo", "foo", parse.MANY),
+        (":name foo :many", "foo", parse.MANY),
+        (":name foo :one", "foo", parse.ONE),
+        (":name foo :scalar", "foo", parse.SCALAR),
+        (":name foo :multi", "foo", parse.MULTI),
+        (":name foo :affected", "foo", parse.AFFECTED),
+        (":name foo :raw", "foo", parse.RAW),
+        (":name foo :*", "foo", parse.MANY),
+        (":name foo :^", "foo", parse.ONE),
+        (":name foo :$", "foo", parse.SCALAR),
+        (":name foo :!", "foo", parse.MULTI),
+        (":name foo :#", "foo", parse.AFFECTED),
+        (":name foo :~", "foo", parse.RAW),
+    ],
+)
+def test_get_funcop(lead, expected_name, expected_modifier):
+    # When
+    name, modifier = parse.get_funcop(lead=lead)
+    # Then
+    assert (name, modifier) == (expected_name, expected_modifier)
 
 
 def _mock_token(**overrides):

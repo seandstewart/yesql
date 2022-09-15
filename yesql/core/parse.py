@@ -255,7 +255,6 @@ if sys.version_info >= (3, 9):
             for c in comment.strip()
             .removeprefix("/**")
             .removesuffix("**/")
-            .strip()
             .splitlines()
         ]
 
@@ -266,8 +265,7 @@ else:
 
     def _split_comments(comment: str) -> list[str]:
         return [
-            c.strip()
-            for c in comment.strip().strip("/**").rstrip("**/").strip().splitlines()
+            c.strip() for c in comment.strip().strip("/**").rstrip("**/").splitlines()
         ]
 
 
