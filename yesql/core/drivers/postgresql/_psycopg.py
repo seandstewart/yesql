@@ -128,7 +128,7 @@ class AsyncPsycoPGQueryExecutor(base.BaseQueryExecutor[psycopg.AsyncConnection])
         timeout: float = 10,
         transaction: bool = True,
         rollback: bool = False,
-        deserializer: base.DeserializerT[_T] | None = None,
+        deserializer: types.DeserializerT[_T] | None = None,
         **params,
     ):
         await self.initialize()
@@ -179,7 +179,7 @@ class AsyncPsycoPGQueryExecutor(base.BaseQueryExecutor[psycopg.AsyncConnection])
         timeout: float = 10,
         transaction: bool = True,
         rollback: bool = False,
-        deserializer: base.DeserializerT[_T] | None = None,
+        deserializer: types.DeserializerT[_T] | None = None,
         **params,
     ):
         await self.initialize()
@@ -238,7 +238,7 @@ class AsyncPsycoPGQueryExecutor(base.BaseQueryExecutor[psycopg.AsyncConnection])
         transaction: bool = True,
         rollback: bool = False,
         returns: bool = False,
-        deserializer: base.DeserializerT[_T] | None = None,
+        deserializer: types.DeserializerT[_T] | None = None,
     ):
         await self.initialize()
         if transaction:
@@ -399,7 +399,7 @@ class PsycoPGQueryExecutor(base.BaseQueryExecutor[psycopg.Connection]):
         timeout: float = 10,
         transaction: bool = True,
         rollback: bool = False,
-        deserializer: base.DeserializerT[_T] | None = None,
+        deserializer: types.DeserializerT[_T] | None = None,
         **params,
     ):
         self.initialize()
@@ -448,7 +448,7 @@ class PsycoPGQueryExecutor(base.BaseQueryExecutor[psycopg.Connection]):
         timeout: float = 10,
         transaction: bool = True,
         rollback: bool = False,
-        deserializer: base.DeserializerT[_T] | None = None,
+        deserializer: types.DeserializerT[_T] | None = None,
         **params,
     ):
         self.initialize()
@@ -503,7 +503,7 @@ class PsycoPGQueryExecutor(base.BaseQueryExecutor[psycopg.Connection]):
         transaction: bool = True,
         rollback: bool = False,
         returns: bool = False,
-        deserializer: base.DeserializerT[_T] | None = None,
+        deserializer: types.DeserializerT[_T] | None = None,
     ):
         self.initialize()
         if transaction:

@@ -1,11 +1,16 @@
+from __future__ import annotations
+
 import importlib
 import inspect
 import pathlib
 import string
 import textwrap
 from types import ModuleType
+from typing import TypedDict
 
+from yesql.core.parse import QueryDatum
 from yesql.repository import BaseQueryRepository
+from yesql.statement import Statement
 
 
 def stubgen(module: str | ModuleType):
@@ -57,66 +62,108 @@ def get_stub_module(module: ModuleType) -> str:
 def get_stub_methods(repo: type[BaseQueryRepository]) -> list[str]:
     methods: list[str] = []
     for method_name, statement in repo.__statements__.items():
-        return_type = repo.model.__name__
-        if statement.query.modifier in {"many", "multi"}:
-            return_type = f"list[{repo.model.__name__}]"
-        elif statement.query.modifier in {"scalar", "raw"}:
-            return_type = "Any"
-        elif statement.query.modifier == "affected":
-            return_type = "int"
-        instance_params = {**inspect.signature(statement.execute).parameters}
-        instance_params.pop("coerce", None)
-        instance_params.pop("args", None)
-        instance_params.pop("kwargs", None)
-        instance_params.pop("_", None)
-        query_params = {**statement.query.signature.parameters, **instance_params}
-        query_params.pop("instance", None)
-        query_params.pop("instances", None)
-        coerce_false = inspect.Parameter(
-            "coerce", inspect.Parameter.KEYWORD_ONLY, annotation="Literal[False]"
+        default_return, raw_return = get_return_types(
+            modelname=repo.model.__name__, query=statement.query
         )
-        coerce_true = inspect.Parameter(
-            "coerce", inspect.Parameter.KEYWORD_ONLY, annotation="Literal[True]"
+        instance_params = get_instance_params(statement, repo)
+        query_params = get_query_params(statement, instance_params)
+        instance_sigs = get_signatures(
+            *instance_params.values(),
+            default_returns=default_return,
+            raw_returns=raw_return,
         )
-        self_param = inspect.Parameter("self", kind=inspect.Parameter.POSITIONAL_ONLY)
-        instance_sig = inspect.Signature(
-            [self_param, *instance_params.values()], return_annotation=return_type
-        )
-        instance_sig_no_coerce = inspect.Signature(
-            [self_param, *instance_params.values(), coerce_false],
-            return_annotation="Any",
-        )
-        instance_sig_coerce = inspect.Signature(
-            [self_param, *instance_params.values(), coerce_true],
-            return_annotation=return_type,
-        )
-        query_sig = inspect.Signature(
-            [self_param, *query_params.values()], return_annotation=return_type
-        )
-        query_sig_no_coerce = inspect.Signature(
-            [self_param, *query_params.values(), coerce_false], return_annotation="Any"
-        )
-        query_sig_coerce = inspect.Signature(
-            [self_param, *query_params.values(), coerce_true],
-            return_annotation=return_type,
+        query_sigs = get_signatures(
+            *query_params.values(),
+            default_returns=default_return,
+            raw_returns=raw_return,
         )
         istr = method_template.substitute(
             method_name=method_name,
-            method_sig=instance_sig,
-            method_sig_coerce=instance_sig_coerce,
-            method_sig_no_coerce=instance_sig_no_coerce,
             doc=statement.query.doc,
+            **instance_sigs,
         )
         qstr = method_template.substitute(
-            method_name=method_name,
-            method_sig=query_sig,
-            method_sig_coerce=query_sig_coerce,
-            method_sig_no_coerce=query_sig_no_coerce,
-            doc=statement.query.doc,
+            method_name=method_name, doc=statement.query.doc, **query_sigs
         )
         methods.extend((istr, qstr))
 
     return methods
+
+
+def get_return_types(modelname: str, query: QueryDatum) -> tuple[str, str]:
+    default = modelname
+    raw = "typing.Any"
+    if query.modifier in {"many", "multi"}:
+        default = f"list[{modelname}]"
+    elif query.modifier in {"scalar", "raw"}:
+        default = "typing.Any"
+    elif query.modifier == "affected":
+        raw = default = "int"
+    return default, raw
+
+
+def get_signatures(*params, default_returns: str, raw_returns: str) -> StubSignatures:
+    sig = inspect.Signature([self_param, *params], return_annotation=default_returns)
+    sig_no_coerce = inspect.Signature(
+        [self_param, *params, coerce_false],
+        return_annotation=raw_returns,
+    )
+    sig_coerce = inspect.Signature(
+        [self_param, *params, coerce_true],
+        return_annotation=default_returns,
+    )
+    return {
+        "method_sig": sig,
+        "method_sig_coerce": sig_coerce,
+        "method_sig_no_coerce": sig_no_coerce,
+    }
+
+
+def get_instance_params(
+    statement: Statement, repo: type[BaseQueryRepository]
+) -> dict[str, inspect.Parameter]:
+    unprocessed = inspect.signature(statement.execute).parameters
+    processed = {}
+    for name, param in unprocessed.items():
+        if name in ("coerce", "args", "kwargs", "_"):
+            continue
+        annotation = param.annotation
+        if name == "instance":
+            annotation = f"{repo.model.__name__} | None"
+        elif name == "instances":
+            annotation = f"typing.Sequence[{repo.model.__name__}]"
+        elif name == "params":
+            annotation = (
+                "typing.Iterable[typing.Sequence | typing.Mapping[str, typing.Any]]"
+            )
+        elif name in ("connection", "serializer", "deserializer"):
+            annotation = "yesql.types." + param.annotation.rsplit(".")[-1]
+        processed[name] = param.replace(annotation=annotation)
+    return processed
+
+
+def get_query_params(
+    statement: Statement, instance_params: dict[str, inspect.Parameter]
+):
+    query_params = {**statement.query.signature.parameters, **instance_params}
+    query_params.pop("instance", None)
+    query_params.pop("instances", None)
+    return query_params
+
+
+class StubSignatures(TypedDict):
+    method_sig: inspect.Signature
+    method_sig_coerce: inspect.Signature
+    method_sig_no_coerce: inspect.Signature
+
+
+coerce_false = inspect.Parameter(
+    "coerce", inspect.Parameter.KEYWORD_ONLY, annotation="typing.Literal[False]"
+)
+coerce_true = inspect.Parameter(
+    "coerce", inspect.Parameter.KEYWORD_ONLY, annotation="typing.Literal[True]"
+)
+self_param = inspect.Parameter("self", kind=inspect.Parameter.POSITIONAL_ONLY)
 
 
 method_template_str = '''

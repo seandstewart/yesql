@@ -16,7 +16,7 @@ from typing import (
 import asyncpg
 import typic
 
-from yesql.core import parse, support
+from yesql.core import parse, support, types
 from yesql.core.drivers import base
 
 __all__ = (
@@ -123,7 +123,7 @@ class AsyncPGQueryExecutor(base.BaseQueryExecutor):
         timeout: float = 10,
         transaction: bool = True,
         rollback: bool = False,
-        deserializer: base.DeserializerT[_T] | None = None,
+        deserializer: types.DeserializerT[_T] | None = None,
         **kwargs,
     ):
         await self.initialize()
@@ -175,7 +175,7 @@ class AsyncPGQueryExecutor(base.BaseQueryExecutor):
         timeout: float = 10,
         transaction: bool = True,
         rollback: bool = False,
-        deserializer: Optional[base.DeserializerT[_T]] = None,
+        deserializer: Optional[types.DeserializerT[_T]] = None,
         **kwargs,
     ):
         await self.initialize()
@@ -229,7 +229,7 @@ class AsyncPGQueryExecutor(base.BaseQueryExecutor):
         transaction: bool = True,
         rollback: bool = False,
         returns: bool = False,
-        deserializer: Optional[base.DeserializerT[_T]] = None,
+        deserializer: Optional[types.DeserializerT[_T]] = None,
     ):
         await self.initialize()
         if transaction:

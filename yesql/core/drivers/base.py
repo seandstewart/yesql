@@ -1,19 +1,9 @@
 from __future__ import annotations
 
 import abc
-from typing import (
-    Any,
-    Callable,
-    Collection,
-    Generic,
-    Iterable,
-    Mapping,
-    Sequence,
-    TypeVar,
-    Union,
-)
+from typing import Any, Generic, Iterable, Mapping, Sequence, TypeVar, Union
 
-from yesql.core import parse
+from yesql.core import parse, types
 
 _T = TypeVar("_T")
 _CT = TypeVar("_CT")
@@ -76,7 +66,7 @@ class BaseQueryExecutor(abc.ABC, Generic[_CT]):
         timeout: float = 10,
         transaction: bool = True,
         rollback: bool = False,
-        deserializer: DeserializerT[_T] | None = None,
+        deserializer: types.DeserializerT[_T] | None = None,
         **kwargs,
     ):
         ...
@@ -143,7 +133,7 @@ class BaseQueryExecutor(abc.ABC, Generic[_CT]):
         timeout: float = 10,
         transaction: bool = True,
         rollback: bool = False,
-        deserializer: DeserializerT[_T] | None = None,
+        deserializer: types.DeserializerT[_T] | None = None,
         **kwargs,
     ):
         ...
@@ -172,7 +162,7 @@ class BaseQueryExecutor(abc.ABC, Generic[_CT]):
         transaction: bool = True,
         rollback: bool = False,
         returns: bool = True,
-        deserializer: DeserializerT[_T] | None,
+        deserializer: types.DeserializerT[_T] | None,
     ):
         ...
 
@@ -214,7 +204,3 @@ class BaseQueryExecutor(abc.ABC, Generic[_CT]):
         return cls.EXPLAIN_PREFIX
 
     EXPLAIN_PREFIX = "EXPLAIN"
-
-
-DeserializerT = Callable[[Any], _T]
-SerializerT = Callable[[_T], Collection]

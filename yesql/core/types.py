@@ -4,7 +4,9 @@ import pathlib
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     ClassVar,
+    Collection,
     Dict,
     FrozenSet,
     Generic,
@@ -24,6 +26,8 @@ if TYPE_CHECKING:
 ModelT = TypeVar("ModelT")
 ScalarT = TypeVar("ScalarT", covariant=True)
 ConnectionT = TypeVar("ConnectionT")
+DeserializerT = Callable[[Any], ModelT]
+SerializerT = Callable[[ModelT], Collection]
 
 
 class MetadataT:
