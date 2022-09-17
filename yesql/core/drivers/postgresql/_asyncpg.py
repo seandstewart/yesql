@@ -153,7 +153,7 @@ class AsyncPGQueryExecutor(base.BaseQueryExecutor):
         transaction: bool = True,
         rollback: bool = False,
         **kwargs,
-    ) -> asyncpg.connection.cursor.Cursor:
+    ) -> AsyncIterator[asyncpg.connection.cursor.Cursor]:
         await self.initialize()
         if transaction:
             ctx = self.transaction(

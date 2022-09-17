@@ -28,6 +28,7 @@ ScalarT = TypeVar("ScalarT", covariant=True)
 ConnectionT = TypeVar("ConnectionT")
 DeserializerT = Callable[[Any], ModelT]
 SerializerT = Callable[[ModelT], Collection]
+CursorT = TypeVar("CursorT")
 
 
 class MetadataT:

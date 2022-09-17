@@ -63,7 +63,7 @@ def get_stub_methods(repo: type[BaseQueryRepository]) -> list[str]:
     methods: list[str] = []
     for method_name, statement in repo.__statements__.items():
         default_return, raw_return = get_return_types(
-            modelname=repo.model.__name__, query=statement.query
+            modelname=repo.model.__name__, query=statement.query, isaio=repo.isaio
         )
         instance_params = get_instance_params(statement, repo)
         query_params = get_query_params(statement, instance_params)
@@ -71,11 +71,13 @@ def get_stub_methods(repo: type[BaseQueryRepository]) -> list[str]:
             *instance_params.values(),
             default_returns=default_return,
             raw_returns=raw_return,
+            name=statement.query.name,
         )
         query_sigs = get_signatures(
             *query_params.values(),
             default_returns=default_return,
             raw_returns=raw_return,
+            name=statement.query.name,
         )
         istr = method_template.substitute(
             method_name=method_name,
@@ -90,7 +92,11 @@ def get_stub_methods(repo: type[BaseQueryRepository]) -> list[str]:
     return methods
 
 
-def get_return_types(modelname: str, query: QueryDatum) -> tuple[str, str]:
+def get_return_types(modelname: str, query: QueryDatum, isaio: bool) -> tuple[str, str]:
+    if query.name.endswith("cursor"):
+        wrapper = "typing.AsyncContextManager" if isaio else "typing.ContextManager"
+        rtype = f"{wrapper}[yesql.types.CursorT]"
+        return rtype, rtype
     default = modelname
     raw = "typing.Any"
     if query.modifier in {"many", "multi"}:
@@ -102,8 +108,17 @@ def get_return_types(modelname: str, query: QueryDatum) -> tuple[str, str]:
     return default, raw
 
 
-def get_signatures(*params, default_returns: str, raw_returns: str) -> StubSignatures:
+def get_signatures(
+    *params, default_returns: str, raw_returns: str, name: str
+) -> StubSignatures:
     sig = inspect.Signature([self_param, *params], return_annotation=default_returns)
+    if name.endswith("cursor"):
+        return {
+            "method_sig": sig,
+            "method_sig_coerce": sig,
+            "method_sig_no_coerce": sig,
+        }
+
     sig_no_coerce = inspect.Signature(
         [self_param, *params, coerce_false],
         return_annotation=raw_returns,
