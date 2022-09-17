@@ -39,7 +39,21 @@ def parse(
     driver: SupportedDriversT,
     modname: str | None = None,
 ) -> QueryPackage:
-    """Parse a string or path, returning a QueryPackage, for building a query library."""
+    """Parse a string or path, returning a QueryPackage, for building a query library.
+
+    Args:
+        queries:
+            Either the query/queries as string, or a pathlib.Path object pointing
+            to a query library.
+    Keyword Args:
+        driver:
+            The SDK which is in use for this query library. The driver name affects how
+            parameters are normalized in your query library to comply with the format
+            style of the SDK.
+        modname: optional
+            The name root name of the "module" for this library. Defaults to the name
+            of the root directory or file of the query library.
+    """
 
     # If we have a raw string or a single module, create a package from that.
     if isinstance(queries, str) or queries.is_file():
@@ -60,10 +74,12 @@ def parse(
         # Traverse the directory, looking for modules to parse into QueryDatum
         for child in pkg.path.iterdir():
             # If we found a directory, add it to the stack and attach it to the parent.
-            if child.is_dir():
+            if child.is_dir() and child.name != "__pycache__":
                 cpkg = QueryPackage(name=child.stem, modules={}, path=child)
                 stack.append(cpkg)
                 pkg.packages[cpkg.name] = cpkg
+                continue
+            if child.suffix != ".sql":
                 continue
             # Otherwise, parse the module and attach it to the package.
             module = parse_module(queries=child, modname=child.stem, driver=driver)
@@ -130,6 +146,7 @@ def get_preamble(statement: sqlparse.sql.Statement) -> tuple[str, str, int]:
 
 def _iter_comments(statement: sqlparse.sql.Statement):
     for ix, token in enumerate(statement.tokens):
+        # We've encountered a sql statement, halt processing.
         if token.is_keyword:
             break
         # Skip any newline or whitespace.
