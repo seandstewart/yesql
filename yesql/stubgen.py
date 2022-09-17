@@ -13,11 +13,14 @@ from yesql.repository import BaseQueryRepository
 from yesql.statement import Statement
 
 
-def stubgen(module: str | ModuleType):
+def stubgen(module: str | ModuleType) -> pathlib.Path | None:
     if isinstance(module, str):
         module = get_module(module)
 
     stub = get_stub_module(module)
+    if stub is None:
+        return None
+
     module_path = pathlib.Path(module.__file__).resolve()
     stub_path = module_path.with_suffix(".pyi")
     stub_path.write_text(stub)
@@ -37,11 +40,16 @@ def is_repository(o):
     return inspect.isclass(o) and issubclass(o, BaseQueryRepository)
 
 
-def get_stub_module(module: ModuleType) -> str:
+def get_stub_module(module: ModuleType) -> str | None:
     module_def = inspect.getsource(module)
     replacements: list[tuple[str, str]] = []
-    repo: type[BaseQueryRepository]
-    for name, repo in inspect.getmembers(module, is_repository):
+    repos: list[tuple[str, type[BaseQueryRepository]]] = inspect.getmembers(
+        module, is_repository
+    )
+    if not repos:
+        return None
+
+    for name, repo in repos:
         try:
             class_def = inspect.getsource(repo)
         except (OSError, TypeError):
