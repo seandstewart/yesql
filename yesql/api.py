@@ -100,7 +100,6 @@ def servicemaker(
     dialect: drivers.SupportedDialectsT = "postgresql",
     isaio: bool = True,
     exclude_fields: frozenset[str] = frozenset(),
-    scalar_queries: frozenset[str] = frozenset(),
     base_repository: Type[BaseQueryRepository] = None,
     custom_queries: Tuple[types.QueryExecutorMethodT, ...] = (),
 ) -> Type[AsyncQueryRepository[types.ModelT]] | Type[SyncQueryRepository[types.ModelT]]:
@@ -123,8 +122,6 @@ def servicemaker(
             Whether to use asyncio-based execution or sync-io-based.
         exclude_fields: optional
             Any fields which should be automatically excluded when dumping your model.
-        scalar_queries: optional
-            Any queries in your library that do not resolve to your model.
         base_repository: optional
             Optionally provide your own base class for your query service.
         custom_queries: optional
@@ -145,7 +142,6 @@ def servicemaker(
             "__tablename__": tablename,
             "__dialect__": dialect,
             "__exclude_fields__": exclude_fields,
-            "__scalar_queries__": scalar_queries,
         },
     )
     namespace: dict[str, Any] = {f.__name__: f for f in custom_queries}

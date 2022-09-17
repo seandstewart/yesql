@@ -36,7 +36,7 @@ class MetadataT:
 
 class RepositoryProtocolT(Generic[ModelT]):
     # User-defined attributes
-    model: ClassVar[ModelT]
+    model: ClassVar[Type[ModelT]]
     metadata: ClassVar[Type[MetadataT]]
     # Generated attributes
     queries: ClassVar[parse.QueryPackage]

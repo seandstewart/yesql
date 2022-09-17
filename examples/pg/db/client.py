@@ -11,6 +11,8 @@ QUERIES = pathlib.Path(__file__).resolve().parent / "queries"
 class AsyncPosts(yesql.AsyncQueryRepository[Post]):
     """An asyncio-native service for querying blog posts."""
 
+    model = Post
+
     class metadata(yesql.QueryMetadata):
         __querylib__ = QUERIES
         __tablename__ = "posts"
@@ -50,5 +52,4 @@ SyncPosts = yesql.servicemaker(
     tablename="posts",
     isaio=False,
     exclude_fields=frozenset(("slug",)),
-    scalar_queries=frozenset(("add_tags",)),
 )
