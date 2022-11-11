@@ -5,6 +5,9 @@ description = "YeSQL is a SQL-first data manipulation library that will replace 
 authors = ["Sean Stewart <sean_stewart@me.com>"]
 license = "MIT"
 
+[tool.poetry.scripts]
+"yesql-type-stubs" = "yesql.bin.stubgen:main"
+
 [tool.poetry.dependencies]
 # Library
 python = "^3.8"

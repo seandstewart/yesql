@@ -4,6 +4,7 @@ import importlib
 import inspect
 import pathlib
 import string
+import sys
 import textwrap
 from types import ModuleType
 from typing import TypedDict
@@ -28,11 +29,8 @@ def stubgen(module: str | ModuleType) -> pathlib.Path | None:
 
 
 def get_module(string) -> ModuleType:
-    path = string.rsplit(".", maxsplit=1)
-    target, package = path[-1], None
-    if len(path) > 1:
-        target, package = path
-    module = importlib.import_module(name=target, package=package)
+    module = importlib.import_module(string)
+    sys.modules[module.__name__] = module
     return module
 
 
@@ -41,7 +39,10 @@ def is_repository(o):
 
 
 def get_stub_module(module: ModuleType) -> str | None:
-    module_def = inspect.getsource(module)
+    try:
+        module_def = inspect.getsource(module)
+    except OSError:
+        return None
     replacements: list[tuple[str, str]] = []
     repos: list[tuple[str, type[BaseQueryRepository]]] = inspect.getmembers(
         module, is_repository
@@ -113,6 +114,8 @@ def get_return_types(modelname: str, query: QueryDatum, isaio: bool) -> tuple[st
         default = "typing.Any"
     elif query.modifier == "affected":
         raw = default = "int"
+    if isaio:
+        default, raw = f"typing.Awaitable[{default}]", f"typing.Awaitable[{raw}]"
     return default, raw
 
 
