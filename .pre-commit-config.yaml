@@ -3,8 +3,8 @@ repos:
     rev: v1.2.0
     hooks:
       - id: mypy
-        exclude: '.*tests/.*|.*docs/.*'
-        args: ["--show-error-codes"]
+        exclude: '.*tests/.*|.*docs/.*|.*examples/.*'
+        args: ["--show-error-codes", "--config=pyproject.toml"]
         additional_dependencies: [types-orjson]
   - repo: https://github.com/ambv/black
     rev: 23.3.0

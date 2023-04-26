@@ -1,7 +1,7 @@
-# YeSQL
+# yesql
 
-Say YES to SQL with YeSQL. YeSQL eliminates boilerplate without the baggage of an 
-expensive or clunky ORM. Simply write your SQL and point YeSQL to the directory, and it 
+Say YES to SQL with yesql. yesql eliminates boilerplate without the baggage of an 
+expensive or clunky ORM. Simply write your SQL and point yesql to the directory, and it 
 does all the rest.
 
 ## Quickstart
@@ -80,9 +80,9 @@ class AsyncPosts(yesql.AsyncQueryRepository[Post]):
    reasonable means of mitigation.
 
 
-## Why YeSQL?
+## Why yesql?
 
-YeSQL takes a SQL-first approach to data management:
+yesql takes a SQL-first approach to data management:
 
 1. *Focus on your SQL and your database.*
    - Reduce developer overhead by having one less middleman between you and your data.

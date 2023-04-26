@@ -1,0 +1,9 @@
+- id: yesql-stubgen
+  name: yesql Stubgen
+  entry: yesql stubgen
+  language: python
+  types:
+  - python
+  pass_filenames: true
+  additional_dependencies:
+  - black

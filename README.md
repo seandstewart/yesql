@@ -1,50 +1,77 @@
-# YeSQL
+# yesql
 
-Say YES to SQL with YeSQL. YeSQL eliminates boilerplate without the baggage of an 
-expensive or clunky ORM. Simply write your SQL and point YeSQL to the directory, and it 
-does all the rest.
+[![image](https://img.shields.io/pypi/v/yesql.svg)](https://pypi.org/project/yesql/)
+[![image](https://img.shields.io/pypi/l/yesql.svg)](https://pypi.org/project/yesql/)
+[![image](https://img.shields.io/pypi/pyversions/yesql.svg)](https://pypi.org/project/yesql/)
+[![image](https://img.shields.io/github/languages/code-size/seandstewart/yesql.svg?style=flat)](https://github.com/seandstewart/yesql)
+[![Test & Lint](https://github.com/seandstewart/yesql/workflows/Test/badge.svg)](https://github.com/seandstewart/yesql/actions)
+[![Coverage](https://codecov.io/gh/seandstewart/yesql/branch/main/graph/badge.svg)](https://codecov.io/gh/seandstewart/yesql)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
+
+
+Say _yes_ to _SQL_ with **yesql**. 
+
+yesql eliminates boilerplate without the baggage of an expensive or clunky ORM. 
+Simply write your SQL, point yesql to the directory, and it does all the rest.
 
 ## Quickstart
-
 
 ### Installation
 
 ```shell
-pip install -U yesql
+pip install -U --pre yesql
+```
+or
+```shell
+poetry add --allow-prereleases yesql
+```
+
+yesql currently supports the following database drivers:
+
+- [asyncpg][1]
+- [psycopg][2]
+
+You can select your driver as an extra when installing yesql _(recommended)_:
+
+```shell
+pip install -U --pre "yesql[psycopg]"
+```
+or
+```shell
+poetry add --allow-prereleases yesql -E asyncpg
 ```
 
 ### Basic Usage
 
 ```python
+from __future__ import annotations
+
 import dataclasses
 import datetime
 import pathlib
-from typing import Optional, Set
 
-import typic
 import yesql
 
 
 QUERIES = pathlib.Path(__file__).resolve().parent / "queries"
 
 
-@typic.slotted(dict=False, weakref=True)
-@dataclasses.dataclass
+@dataclasses.dataclass(slots=True, kw_only=True)
 class Post:
-    id: Optional[int] = None
-    slug: Optional[str] = None
-    title: Optional[str] = None
-    subtitle: Optional[str] = None
-    tagline: Optional[str] = None
-    body: Optional[str] = None
-    tags: Set[str] = dataclasses.field(default_factory=set)
-    publication_date: Optional[datetime.date] = None
-    created_at: Optional[datetime.datetime] = None
-    updated_at: Optional[datetime.datetime] = None
+    id: int | None = None
+    slug: str | None = None
+    title: str | None = None
+    subtitle: str | None = None
+    tagline: str | None = None
+    body: str | None = None
+    tags: set[str] = dataclasses.field(default_factory=set)
+    publication_date: datetime.date | None = None
+    created_at: datetime.datetime | None = None
+    updated_at: datetime.datetime | None = None
 
 
 
-class AsyncPosts(yesql.AsyncQueryRepository[Post]):
+class PostsRepository(yesql.SyncQueryRepository[Post]):
     """An asyncio-native service for querying blog posts."""
 
     class metadata(yesql.QueryMetadata):
@@ -53,7 +80,44 @@ class AsyncPosts(yesql.AsyncQueryRepository[Post]):
         __exclude_fields__ = frozenset(("slug",))
 
 
+
+posts = PostsRepository()
+posts.initialize()
+new_post = Post(
+    title="My Great Blog Post",
+    subtitle="It's super great. Trust me...",
+    tagline="You'll be glad you read it.",
+    tags={"tips", "tricks", "cool stuff"},
+)
+saved_post = posts.create(instance=new_post)
 ```
+
+#### Type-stub Generation (Experimental)
+
+yesql ships with simple CLI for generating type-stubs. This allows for more exact 
+static type-analysis and enables auto-complete for your IDE.
+
+Usage:
+
+```shell
+yesql stubgen
+```
+
+You can optionally supply any number of paths to directories or python modules. The 
+command will default to the current working directory on the filesystem.
+
+If you don't have [black][3] installed in your development environment, you should add 
+the `cli` extra as a development dependency.
+
+## Features
+
+- [x] Support for synchronous IO
+- [x] Support for asynchronous IO (asyncio)
+- [x] Support for PostgreSQL
+- [x] Plays well with MyPy
+- [x] Plays well with IDEs
+- [x] Encourages best-practices for data-access (Separation of Concerns, Repository 
+  Pattern)
 
 ## No ORMs?
 
@@ -62,9 +126,9 @@ class AsyncPosts(yesql.AsyncQueryRepository[Post]):
    is to abstract out the details of working with a database.
 
 2. *ORMs are slow.*  
-   ORMs depend upon an extremely high level of abstraction in order to work consistently
-   across database clients. They also attempt to bridge the gap of data validation and
-   state management. By attempting to hide the details of managing state from the end
+   ORMs depend upon a high level of abstraction in order to work across database 
+   clients. They also attempt to bridge the gap of data validation and  state 
+   management. By attempting to hide the details of managing state from the end
    user, they suffer from large computational costs and predict
 
 3. *ORMs are wasteful.*  
@@ -80,9 +144,9 @@ class AsyncPosts(yesql.AsyncQueryRepository[Post]):
    reasonable means of mitigation.
 
 
-## Why YeSQL?
+## Why yesql?
 
-YeSQL takes a SQL-first approach to data management:
+yesql takes a SQL-first approach to data management:
 
 1. *Focus on your SQL and your database.*
    - Reduce developer overhead by having one less middleman between you and your data.
@@ -104,12 +168,11 @@ YeSQL takes a SQL-first approach to data management:
 
 - [x] Query Library Bootstrapping
 - [x] Dynamic Query Library
-- [ ] CLI for stamping new libraries or services
 - [ ] Full Documentation Coverage
 - [ ] Full Test Coverage
 - [ ] Dialect Support
   - [x] Async PostgreSQL (via asyncpg & psycopg3)
-  - [ ] Async SQLite (via aiosqlite)
+  - [ ] Async SQLite
   - [ ] Async MySQL
   - [x] Sync PostgreSQL
   - [ ] Sync SQLite
@@ -118,3 +181,8 @@ YeSQL takes a SQL-first approach to data management:
 ## License
 
 [MIT](https://sean-dstewart.mit-license.org/)
+
+
+[1]: https://magicstack.github.io/asyncpg/current/
+[2]: https://www.psycopg.org/psycopg3/docs/
+[3]: https://black.readthedocs.io/en/stable/
