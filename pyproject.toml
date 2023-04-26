@@ -1,76 +1,62 @@
 [tool.poetry]
 name = "yesql"
-version = "0.1.1"
+version = "0.2.0"
 description = "YeSQL is a SQL-first data manipulation library that will replace your ORM."
 authors = ["Sean Stewart <sean_stewart@me.com>"]
 license = "MIT"
+keywords = ["typing", "data", "annotations", "validation", "json-schema"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Database",
+    "Topic :: Database :: Front-Ends",
+    "Typing :: Typed",
+]
+
 
 [tool.poetry.scripts]
 "yesql-type-stubs" = "yesql.bin.stubgen:main"
 
 [tool.poetry.dependencies]
-# Library
 python = "^3.8"
 typical = "^2.8"
-PyPika = "^0.48.0"
-asyncpg = {version = "^0.25.0", optional = true}
-orjson = {version = "^3.5.1", optional = true}
-psycopg = {extras = ["binary", "pool"], version = "^3.0", optional = true}
-# Docs
-mkdocs = {version = "^1.2.2", optional = true}
-mkdocs-material = {version = "^8.0", optional = true}
-mkdocs-awesome-pages-plugin = {version = "^2.5.0", optional = true}
-# Lint
-mypy = {version = "^0.910", optional = true}
-black = {version = "^22", optional = true}
-flake8 = {version = "^3.9.2", optional = true}
-# Test
-pytest = {version = "^6.2.4", optional = true}
-pytest-asyncio = {version = "^0.15.1", optional = true}
-pytest-cov = {version = "^3.0", optional = true}
-pytest-benchmark = {version = "^3.4.1", optional = true}
-types-orjson = {version = "^0.1.1", optional = true}
-factory-boy = {version = "^3.2.1", optional=true}
-sqlparse = "^0.4.2"
+PyPika = "^0.48"
+orjson = "^3"
+sqlparse = "^0.4"
+asyncpg = {version = "^0.27", optional = true}
+psycopg = {extras = ["binary", "pool"], version = "^3.1", optional = true}
+
+[tool.poetry.group.docs.dependencies]
+mkdocs ="^1.2.2"
+mkdocs-material = "^8.0"
+mkdocs-awesome-pages-plugin = "^2.5.0"
+
+[tool.poetry.group.lint.dependencies]
+mypy = "^1"
+black = "^23"
+flake8 = "^3"
+types-orjson = "^0.1.1"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^7"
+pytest-asyncio = "^0.21"
+pytest-cov = "^4"
+pytest-benchmark = "^4"
+factory-boy = "^3.2.1"
 
 [tool.poetry.extras]
 asyncpg = ["asyncpg", "orjson"]
 psycopg = ["psycopg", "orjson"]
-docs = ["mkdocs", "mkdocs-material", "mkdocs-awesome-pages-plugin"]
-lint = ["mypy", "black", "flake8", "types-orjson"]
-tests = [
-    "pytest",
-    "pytest-asyncio",
-    "pytest-cov",
-    "pytest-benchmark",
-    "asyncpg",
-    "orjson",
-    "psycopg",
-    "aiosqlite",
-    "factory-boy",
-]
-
-[tool.poetry.dev-dependencies]
-# Docs
-mkdocs = "^1.2.2"
-mkdocs-material = "^8.0"
-mkdocs-awesome-pages-plugin = "^2.5.0"
-# Lint
-mypy = "^0.910"
-black = "^22"
-flake8 = "^3.9.2"
-# Test
-pytest = "^6.2.4"
-pytest-asyncio = "^0.15.1"
-pytest-cov = "^3.0"
-pytest-benchmark = "^3.4.1"
-pre-commit = "^2.13.0"
-asyncpg = "^0.25.0"
-orjson = "^3.6.0"
-psycopg = { extras = ["binary", "pool"], version = "^3.0"}
-ptpython = "^3.0.20"
-factory-boy = "^3.2.1"
-
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

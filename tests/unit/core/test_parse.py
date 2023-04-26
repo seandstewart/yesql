@@ -134,11 +134,9 @@ def test__normalize_parameters(
     expected_sql: str,
     expected_remapping: dict,
 ):
-    # Given
-    (statement,) = sqlparse.parse(sql)
     # When
     normalized, remapping = parse._normalize_parameters(
-        statement=statement,
+        statement=sql,
         driver=driver,
         posargs=posargs,
         kwdargs=kwdargs,

@@ -10,8 +10,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.8", "3.9", "3.10"]
-        poetry-version: ["1.2.0"]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        poetry-version: ["1.4.2"]
     env:
       OS: ${{ matrix.os }}
       PYTHON: ${{ matrix.python-version }}
@@ -43,22 +43,11 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Display Python version
-      run: python -c "import sys; print(f'Python {sys.version} on {sys.platform}')"
-
-    - name: Install Linux dependencies
-      if: startsWith(matrix.os, 'ubuntu')
-      run: |
-        ./.github/ubuntu-install.sh
-    - name: Install macOS dependencies
-      if: startsWith(matrix.os, 'macos')
-      run: |
-        ./.github/macos-install.sh
-
     - name: Install Poetry
       uses: abatilo/actions-poetry@v2.1.3
       with:
         poetry-version: ${{ matrix.poetry-version }}
+
     - name: Cache Poetry virtualenv
       uses: actions/cache@v1
       id: cache
@@ -71,23 +60,12 @@ jobs:
     - name: Set Poetry config
       run: |
         poetry config virtualenvs.in-project true
-        poetry config experimental.new-installer true
-    - name: Set Poetry config (py3.10)
-      if: matrix.python-version > 3.9
-      run: |
-        poetry config experimental.new-installer false
     - name: Install Dependencies
-      if: ${{ !(startsWith(matrix.os, 'macos') && matrix.python-version >= 3.9) }}
-      run: pip install -U setuptools && poetry install --no-dev -E tests
-
-    - name: Install Dependencies (MacOS + Py3.9)
-      if: ${{ startsWith(matrix.os, 'macos') && matrix.python-version >= 3.9 }}
-      run: |
-        OPENBLAS="$(brew --prefix openblas)" poetry install --no-dev -E tests
+      run: pip install -U setuptools && poetry install --all-extras
 
     - name: Test with pytest
       run: |
-        poetry run pytest tests yesql --doctest-modules --cov --cov-config=.coveragerc --cov-report=xml
+        poetry run pytest tests yesql --doctest-modules --cov --cov-config=.coveragerc --cov-report=xml --cov-report=term
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v2

@@ -11,13 +11,13 @@ import psycopg_pool as pgpool
 import pytest
 import typic
 
-from yesql import uow
+from yesql import statement
 from yesql.core.drivers.postgresql import _asyncpg, _psycopg
 
 
 @pytest.fixture(scope="session")
-def foo_serde() -> uow.SerDes[Foo]:
-    return uow.SerDes(
+def foo_serde() -> statement.SerDes[Foo]:
+    return statement.SerDes(
         serializer=lambda f: {"bar": f.bar},
         deserializer=typic.protocol(Foo, is_optional=True).transmute,
         bulk_deserializer=typic.protocol(Iterable[Foo]).transmute,
