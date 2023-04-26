@@ -138,7 +138,7 @@ class Statement(Generic[_T]):
         timeout: float = 10,
         transaction: bool = True,
         rollback: bool = False,
-        serializer: base.SerializerT | None = None,
+        serializer: types.SerializerT | None = None,
         **kwargs,
     ):
         """Execute the associated :py::class:`~yesql.core.parse.QueryDatum`."""
@@ -151,7 +151,7 @@ class Statement(Generic[_T]):
         timeout: float = 10,
         transaction: bool = True,
         rollback: bool = False,
-        deserializer: base.DeserializerT | None = None,
+        deserializer: types.DeserializerT | None = None,
         **kwargs,
     ):
         """Execute the associated middleware.
@@ -177,7 +177,7 @@ class Statement(Generic[_T]):
         self,
         *,
         instance: _T,
-        serializer: base.SerializerT | None,
+        serializer: types.SerializerT | None,
         args: Sequence,
         kwargs: dict,
     ) -> tuple[Sequence, dict]:
@@ -201,7 +201,7 @@ class Statement(Generic[_T]):
         *,
         instances: Iterable[_T] = (),
         params: Iterable,
-        serializer: base.SerializerT | None,
+        serializer: types.SerializerT | None,
     ):
         if not instances:
             return params
@@ -244,9 +244,9 @@ class Many(Statement[_T]):
         timeout: float = 10,
         transaction: bool = True,
         rollback: bool = False,
-        serializer: base.SerializerT | None = None,
+        serializer: types.SerializerT | None = None,
         coerce: bool = True,
-        deserializer: base.DeserializerT | None = None,
+        deserializer: types.DeserializerT | None = None,
         **kwargs,
     ):
         sargs, skwargs = self._serialize_instance(
@@ -276,7 +276,7 @@ class ManyCursor(StatementCursor):
         timeout: float = 10,
         transaction: bool = True,
         rollback: bool = False,
-        serializer: base.SerializerT | None = None,
+        serializer: types.SerializerT | None = None,
         **kwargs,
     ):
         sargs, skwargs = self._serialize_instance(
@@ -304,7 +304,7 @@ class Raw(Statement):
         timeout: float = 10,
         transaction: bool = True,
         rollback: bool = False,
-        serializer: base.SerializerT | None = None,
+        serializer: types.SerializerT | None = None,
         **kwargs,
     ):
         sargs, skwargs = self._serialize_instance(
@@ -332,7 +332,7 @@ class RawCursor(StatementCursor):
         timeout: float = 10,
         transaction: bool = True,
         rollback: bool = False,
-        serializer: base.SerializerT | None = None,
+        serializer: types.SerializerT | None = None,
         **kwargs,
     ):
         sargs, skwargs = self._serialize_instance(
@@ -358,9 +358,9 @@ class One(Statement):
         timeout: float = 10,
         transaction: bool = True,
         rollback: bool = False,
-        serializer: base.SerializerT = None,
+        serializer: types.SerializerT = None,
         coerce: bool = True,
-        deserializer: base.DeserializerT | None = None,
+        deserializer: types.DeserializerT | None = None,
         **kwargs,
     ):
         sargs, skwargs = self._serialize_instance(
@@ -390,7 +390,7 @@ class Scalar(Statement):
         timeout: float = 10,
         transaction: bool = True,
         rollback: bool = False,
-        serializer: base.SerializerT | None = None,
+        serializer: types.SerializerT | None = None,
         **kwargs,
     ):
         sargs, skwargs = self._serialize_instance(
@@ -421,8 +421,8 @@ class Multi(Statement):
         rollback: bool = False,
         coerce: bool = True,
         returns: bool = False,
-        deserializer: base.DeserializerT | None = None,
-        serializer: base.SerializerT | None = None,
+        deserializer: types.DeserializerT | None = None,
+        serializer: types.SerializerT | None = None,
     ):
         params = self._serialize_instances(
             instances=instances, params=params, serializer=serializer
@@ -452,7 +452,7 @@ class MultiCursor(StatementCursor):
         timeout: float = 10,
         transaction: bool = True,
         rollback: bool = False,
-        serializer: base.SerializerT | None = None,
+        serializer: types.SerializerT | None = None,
         **_,
     ):
         params = self._serialize_instances(
@@ -477,7 +477,7 @@ class Affected(Statement):
         timeout: float = 10,
         transaction: bool = True,
         rollback: bool = False,
-        serializer: base.SerializerT | None = None,
+        serializer: types.SerializerT | None = None,
         **kwargs,
     ):
         sargs, skwargs = self._serialize_instance(
@@ -506,22 +506,22 @@ class SerDes(Generic[_T]):
     for query execution and also deserialize query responses.
     """
 
-    serializer: base.SerializerT[_T]
-    deserializer: base.DeserializerT[_T | None]
-    bulk_deserializer: base.DeserializerT[Iterable[_T]]
+    serializer: types.SerializerT[_T]
+    deserializer: types.DeserializerT[_T | None]
+    bulk_deserializer: types.DeserializerT[Iterable[_T]]
 
 
 @functools.lru_cache(maxsize=1)
 def generic_serdes() -> SerDes[dict]:
     serdes = SerDes(
-        serializer=cast("base.SerializerT[dict]", typic.primitive),
+        serializer=cast("types.SerializerT[dict]", typic.primitive),
         deserializer=cast(
-            "base.DeserializerT[dict | None]",
+            "types.DeserializerT[dict | None]",
             typic.protocol(dict, is_optional=True).transmute,
         ),
         bulk_deserializer=cast(
-            "base.DeserializerT[Iterable[dict]]",
-            typic.protocol(Iterable[dict]).transmute,  # type: ignore[misc]
+            "types.DeserializerT[Iterable[dict]]",
+            typic.protocol(Iterable[dict]).transmute,  # type: ignore[type-abstract]
         ),
     )
     return serdes

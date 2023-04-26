@@ -58,7 +58,7 @@ class DynamicQueryService(Generic[_MT]):
         transaction: bool = True,
         rollback: bool = False,
         coerce: bool = True,
-        deserializer: drivers.base.DeserializerT | None = None,
+        deserializer: types.DeserializerT | None = None,
         modifier: parse.ModifierT = parse.MANY,
         **kwargs,
     ) -> Union[_ReturnT, Awaitable[_ReturnT]]:
@@ -164,7 +164,7 @@ class DynamicQueryService(Generic[_MT]):
         transaction: bool = True,
         rollback: bool = False,
         coerce: bool = True,
-        deserializer: drivers.base.DeserializerT | None = None,
+        deserializer: types.DeserializerT | None = None,
         modifier: parse.ModifierT = parse.MANY,
         **where: Any,
     ) -> Union[_ReturnT, Awaitable[_ReturnT]]:

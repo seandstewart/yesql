@@ -20,7 +20,7 @@ def foo_serde() -> statement.SerDes[Foo]:
     return statement.SerDes(
         serializer=lambda f: {"bar": f.bar},
         deserializer=typic.protocol(Foo, is_optional=True).transmute,
-        bulk_deserializer=typic.protocol(Iterable[Foo]).transmute,
+        bulk_deserializer=typic.protocol(Iterable[Foo]).transmute,  # type: ignore[type-abstract]
     )
 
 

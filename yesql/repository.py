@@ -80,8 +80,8 @@ class BaseQueryRepository(types.RepositoryProtocolT[_MT]):
     executor: drivers.BaseQueryExecutor
     serdes: statement.SerDes[_MT]
     # Private attributes.
-    _protocol: ClassVar[typic.SerdeProtocol[_MT | None]]
-    _bulk_protocol: ClassVar[typic.SerdeProtocol[Iterable[_MT]]]
+    _protocol: typic.SerdeProtocol[_MT | None]
+    _bulk_protocol: typic.SerdeProtocol[Iterable[_MT]]
 
     __slots__ = ()
 

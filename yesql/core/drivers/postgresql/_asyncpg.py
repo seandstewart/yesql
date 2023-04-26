@@ -92,7 +92,7 @@ class AsyncPGQueryExecutor(base.BaseQueryExecutor):
                 yield conn
 
     @contextlib.asynccontextmanager
-    async def transaction(
+    async def transaction(  # type: ignore[override]
         self,
         *,
         timeout: float = 10,
@@ -356,8 +356,8 @@ class _Rollback(Exception):
 def create_pool(**overrides) -> asyncpg.Pool:
     pool_settings = AsyncPGPoolSettings()
     connect_settings = AsyncPGConnectionSettings()
-    kwargs = {k: v for k, v in connect_settings if v is not None}
-    kwargs.update((k, v) for k, v in pool_settings if v is not None)
+    kwargs = {k: v for k, v in connect_settings if v is not None}  # type: ignore[attr-defined]
+    kwargs.update((k, v) for k, v in pool_settings if v is not None)  # type: ignore[attr-defined]
     kwargs.update(overrides)
     kwargs.setdefault("init", _init_connection)
     return asyncpg.create_pool(**kwargs)

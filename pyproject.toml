@@ -58,6 +58,18 @@ factory-boy = "^3.2.1"
 asyncpg = ["asyncpg", "orjson"]
 psycopg = ["psycopg", "orjson"]
 
+[tool.mypy]
+mypy_path = "$MYPY_CONFIG_FILE_DIR/yesql"
+no_namespace_packages = true
+python_version = "3.11"
+install_types = true
+non_interactive = true
+ignore_missing_imports = true
+no_strict_optional = true
+follow_imports = "silent"
+exclude = ".*tests/.*|.*docs/.*"
+
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"

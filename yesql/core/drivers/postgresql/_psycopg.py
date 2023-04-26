@@ -104,7 +104,7 @@ class AsyncPsycoPGQueryExecutor(base.BaseQueryExecutor[psycopg.AsyncConnection])
                 await conn.rollback()
 
     @contextlib.asynccontextmanager
-    async def transaction(
+    async def transaction(  # type: ignore[override]
         self,
         *,
         timeout: float = 10,
@@ -289,14 +289,17 @@ class AsyncPsycoPGQueryExecutor(base.BaseQueryExecutor[psycopg.AsyncConnection])
         async with ctx as c:
             cursor: psycopg.AsyncCursor
             async with c.cursor() as cursor:
-                yield await cursor.executemany(query=query.sql, params_seq=params)
+                result = await cursor.executemany(  # type: ignore[func-returns-value]
+                    query=query.sql, params_seq=params
+                )
+                yield result
 
     @support.retry
     async def affected(
         self,
         query: parse.QueryDatum,
         *args,
-        connection: types.ConnectionT = None,
+        connection: psycopg.AsyncConnection = None,
         timeout: float = 10,
         transaction: bool = True,
         rollback: bool = False,
@@ -637,12 +640,14 @@ def create_async_pool(**overrides) -> pgpool.AsyncConnectionPool:
 def _get_environ(**overrides) -> dict:
     pool_settings = PsycoPGPoolSettings()
     connect_settings = PsycoPGConnectionSettings()
-    pool_fields = {k for k, v in pool_settings}
-    conn_fields = {k for k, v in connect_settings}
-    pool_kwargs = {k: v for k, v in pool_settings if v is not None}
+    pool_fields = {k for k, v in pool_settings}  # type: ignore[attr-defined]
+    conn_fields = {k for k, v in connect_settings}  # type: ignore[attr-defined]
+    pool_kwargs = {k: v for k, v in pool_settings if v is not None}  # type: ignore[attr-defined]
     pool_kwargs.update(((k, v) for k, v in overrides.items() if k in pool_fields))
     connect_kwargs = {
-        k: v for k, v in connect_settings if v is not None and k not in pool_kwargs
+        k: v
+        for k, v in connect_settings  # type: ignore[attr-defined]
+        if v is not None and k not in pool_kwargs
     }
     connect_kwargs.update(((k, v) for k, v in overrides.items() if k in conn_fields))
     if "dsn" in pool_kwargs:
