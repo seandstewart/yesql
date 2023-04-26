@@ -11,7 +11,8 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.8", "3.9", "3.10"]
+        python-version: ["3.11"]
+        poetry-version: ["1.4.2"]
     steps:
     - uses: actions/checkout@v1
     - name: Set up Python-${{ matrix.python-version }} (Platform ${{ matrix.os }})
@@ -38,6 +39,8 @@ jobs:
         python-version: 3.7
     - name: Install Poetry
       uses: abatilo/actions-poetry@v2.1.3
+      with:
+        poetry-version: ${{ matrix.poetry-version }}
     - name: Build sdist
       run: poetry build -f sdist
     - name: Store dist artifacts
@@ -62,6 +65,8 @@ jobs:
         path: dist
     - name: Install Poetry
       uses: abatilo/actions-poetry@v2.1.3
+      with:
+        poetry-version: ${{ matrix.poetry-version }}
     - name: Publish to PyPI
       run: poetry publish -u $PYPI_USERNAME -p $PYPI_PASSWORD
       env:

@@ -17,6 +17,13 @@ CREATE SCHEMA blog;
 
 
 --
+-- Name: public; Type: SCHEMA; Schema: -; Owner: -
+--
+
+-- *not* creating schema, since initdb creates it
+
+
+--
 -- Name: unaccent; Type: EXTENSION; Schema: -; Owner: -
 --
 
@@ -138,7 +145,7 @@ ALTER SEQUENCE blog.posts_id_seq OWNED BY blog.posts.id;
 --
 
 CREATE TABLE public.schema_migrations (
-    version character varying(255) NOT NULL
+    version character varying(128) NOT NULL
 );
 
 

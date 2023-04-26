@@ -59,33 +59,33 @@ def middleware():
 
 
 @pytest.fixture
-def statement(datum, executor, middleware) -> DummyStatement:
+def stmt(datum, executor, middleware) -> DummyStatement:
     return DummyStatement(query=datum, executor=executor, middleware=middleware)
 
 
 class TestCoreStatement:
     @staticmethod
-    def test_middleware_setter_null(statement):
+    def test_middleware_setter_null(stmt):
         # When
-        statement.middleware = None
+        stmt.middleware = None
         # Then
-        assert statement.__call__ == statement.execute
+        assert stmt.__call__ == stmt.execute
 
     @staticmethod
-    def test_middleware_setter(statement, middleware):
+    def test_middleware_setter(stmt, middleware):
         # Given
-        statement.middleware = None
+        stmt.middleware = None
         # When
-        statement.middleware = middleware
+        stmt.middleware = middleware
         # Then
-        assert statement.__call__ == statement.execute_middleware
+        assert stmt.__call__ == stmt.execute_middleware
 
     @staticmethod
-    def test_middleware_deleter(statement):
+    def test_middleware_deleter(stmt):
         # When
-        del statement.middleware
+        del stmt.middleware
         # Then
-        assert statement.__call__ == statement.execute and statement._middleware is None
+        assert stmt.__call__ == stmt.execute and stmt._middleware is None
 
     @pytest.mark.parametrize(
         argnames="instance,serializer,expected_args,expected_kwargs",
@@ -97,10 +97,10 @@ class TestCoreStatement:
         ids=["default", "custom", "no-instance"],
     )
     def test_serialize_instance(
-        self, statement, instance, serializer, expected_args, expected_kwargs
+        self, stmt, instance, serializer, expected_args, expected_kwargs
     ):
         # When
-        args, kwargs = statement._serialize_instance(
+        args, kwargs = stmt._serialize_instance(
             instance=instance,
             serializer=serializer,
             args=(),
@@ -118,11 +118,9 @@ class TestCoreStatement:
         ],
         ids=["default", "custom", "no-instances"],
     )
-    def test_serialize_instances(
-        self, statement, instances, serializer, expected_params
-    ):
+    def test_serialize_instances(self, stmt, instances, serializer, expected_params):
         # When
-        params = statement._serialize_instances(
+        params = stmt._serialize_instances(
             instances=instances,
             serializer=serializer,
             params=[],
