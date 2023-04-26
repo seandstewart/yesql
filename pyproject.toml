@@ -54,6 +54,10 @@ pytest-cov = "^4"
 pytest-benchmark = "^4"
 factory-boy = "^3.2.1"
 
+
+[tool.poetry.group.dev.dependencies]
+bumpver = "^2022.1120"
+
 [tool.poetry.extras]
 asyncpg = ["asyncpg", "orjson"]
 psycopg = ["psycopg", "orjson"]
@@ -68,6 +72,23 @@ ignore_missing_imports = true
 no_strict_optional = true
 follow_imports = "silent"
 exclude = ".*tests/.*|.*docs/.*"
+
+[tool.bumpver]
+current_version = "v0.2.0"
+version_pattern = "vMAJOR.MINOR.PATCH[-TAGNUM]"
+commit_message = "bump version to {new_version} [ci skip]"
+tag = false
+push = false
+commit = true
+
+
+[tool.bumpver.file_patterns]
+"pyproject.toml" = [
+    'current_version = "{version}"',
+    'version = "{pep440_version}"',
+]
+"yesql/__init__.py" = ['__version__ = "{pep440_version}"']
+
 
 
 [build-system]
