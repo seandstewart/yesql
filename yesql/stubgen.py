@@ -9,6 +9,7 @@ import textwrap
 from types import ModuleType
 from typing import TypedDict
 
+import black
 from yesql.core.parse import QueryDatum
 from yesql.repository import BaseQueryRepository
 from yesql.statement import Statement
@@ -65,7 +66,9 @@ def get_stub_module(module: ModuleType) -> str | None:
     module_def_stub = "import typing\n" + module_def
     for src, replacement in replacements:
         module_def_stub = module_def_stub.replace(src, replacement)
-    return module_def_stub
+
+    module_def_stub_blackened = blacken(module_def_stub)
+    return module_def_stub_blackened
 
 
 def get_stub_methods(repo: type[BaseQueryRepository]) -> list[str]:
@@ -175,6 +178,14 @@ def get_query_params(
     query_params.pop("instance", None)
     query_params.pop("instances", None)
     return query_params
+
+
+def blacken(code: str) -> str:
+    pyver = sys.version_info.minor
+    black_pyver = black.TargetVersion(pyver)
+    black_mode = black.Mode(is_pyi=True, target_versions={black_pyver})
+    blackened = black.format_str(code, mode=black_mode)
+    return blackened
 
 
 class StubSignatures(TypedDict):

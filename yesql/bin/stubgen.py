@@ -10,9 +10,7 @@ from typing import Iterator
 from yesql import stubgen
 
 
-def main():
-    parse = parser()
-    args = parse.parse_args()
+def run(args: argparse.Namespace):
     sources = args.source or ["."]
     stubbed = stub_package(*sources)
     if stubbed:
@@ -23,11 +21,12 @@ def main():
     sys.exit(1)
 
 
-def parser():
-    parse = argparse.ArgumentParser()
+def configure_parser(
+    parser: argparse.ArgumentParser | None = None,
+) -> argparse.ArgumentParser:
+    parse = parser or argparse.ArgumentParser()
     parse.add_argument(
-        "--source",
-        "-S",
+        "source",
         action="append",
         default=[],
         type=str,
@@ -153,7 +152,3 @@ def dynamic_import(module_name: str, py_path: pathlib.Path) -> ModuleType:
     module = importlib.util.module_from_spec(module_spec)
     module_spec.loader.exec_module(module)  # type: ignore[attr-defined]
     return module
-
-
-if __name__ == "__main__":
-    main()

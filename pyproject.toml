@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "yesql"
 version = "1.0.0b0"
-description = "YeSQL is a SQL-first data manipulation library that will replace your ORM."
+description = "yesql is a SQL-first data access library that will replace your ORM."
 authors = ["Sean Stewart <sean_stewart@me.com>"]
 license = "MIT"
 keywords = ["typing", "data", "annotations", "validation", "json-schema"]
@@ -25,7 +25,7 @@ classifiers = [
 
 
 [tool.poetry.scripts]
-"yesql-type-stubs" = "yesql.bin.stubgen:main"
+"yesql" = "yesql.bin.main:run"
 
 [tool.poetry.dependencies]
 python = ">=3.8.1,<4.0"
@@ -35,6 +35,7 @@ orjson = "^3"
 sqlparse = "^0.4"
 asyncpg = {version = "^0.27", optional = true}
 psycopg = {extras = ["binary", "pool"], version = "^3.1", optional = true}
+black = {version = "^23", optional = true}
 
 [tool.poetry.group.docs.dependencies]
 mkdocs ="^1.2.2"
@@ -61,6 +62,7 @@ bumpver = "^2022.1120"
 [tool.poetry.extras]
 asyncpg = ["asyncpg", "orjson"]
 psycopg = ["psycopg", "orjson"]
+cli = ["black"]
 
 [tool.mypy]
 mypy_path = "$MYPY_CONFIG_FILE_DIR/yesql"
