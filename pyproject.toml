@@ -28,7 +28,7 @@ classifiers = [
 "yesql-type-stubs" = "yesql.bin.stubgen:main"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = ">=3.8.1,<4.0"
 typical = "^2.8"
 PyPika = "^0.48"
 orjson = "^3"
@@ -44,7 +44,7 @@ mkdocs-awesome-pages-plugin = "^2.5.0"
 [tool.poetry.group.lint.dependencies]
 mypy = "^1"
 black = "^23"
-flake8 = "^3"
+flake8 = "^6"
 types-orjson = "^0.1.1"
 
 [tool.poetry.group.test.dependencies]

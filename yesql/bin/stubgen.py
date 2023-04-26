@@ -128,7 +128,6 @@ def sort_node_children(
     node: pathlib.Path,
     pkg: str,
 ) -> tuple[list[tuple[pathlib.Path, str]], list[tuple[pathlib.Path, str]]]:
-
     pkgs, modules = [], []
     for child in node.iterdir():
         modname = child.stem

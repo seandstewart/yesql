@@ -111,7 +111,6 @@ def test_gather_parameters():
         ("%()s", "arg1", True),
         (":2", "arg2", True),
     ]:
-
         params[pout] = (_mock_token(ttype=ttype, value=pname), posarg)
         if posarg:
             expected_posargs[pname] = inspect.Parameter(

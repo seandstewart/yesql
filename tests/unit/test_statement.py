@@ -118,9 +118,7 @@ class TestCoreStatement:
         ],
         ids=["default", "custom", "no-instances"],
     )
-    def test_serialize_instances(
-        self, stmt, instances, serializer, expected_params
-    ):
+    def test_serialize_instances(self, stmt, instances, serializer, expected_params):
         # When
         params = stmt._serialize_instances(
             instances=instances,
