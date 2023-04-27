@@ -2,6 +2,7 @@
 name = "yesql"
 version = "1.0.0b3"
 description = "yesql is a SQL-first data access library that will replace your ORM."
+readme = "README.md"
 authors = ["Sean Stewart <sean_stewart@me.com>"]
 license = "MIT"
 keywords = ["typing", "data", "annotations", "validation", "json-schema"]
