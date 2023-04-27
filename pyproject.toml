@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "yesql"
-version = "1.0.0b3"
+version = "1.0.0b4"
 description = "yesql is a SQL-first data access library that will replace your ORM."
 readme = "README.md"
 authors = ["Sean Stewart <sean_stewart@me.com>"]
@@ -77,7 +77,7 @@ follow_imports = "silent"
 exclude = ".*tests/.*|.*docs/.*"
 
 [tool.bumpver]
-current_version = "v1.0.0-beta3"
+current_version = "v1.0.0-beta4"
 version_pattern = "vMAJOR.MINOR.PATCH[-TAGNUM]"
 commit_message = "bump version to {new_version} [ci skip]"
 tag = false
